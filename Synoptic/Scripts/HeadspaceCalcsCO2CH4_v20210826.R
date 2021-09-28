@@ -108,9 +108,6 @@ setwd("C:/Users/Carla L?pez Lloreda/Dropbox/Grad school/Research/Delmarva projec
 # Read data for synoptic
 data_202011 <- read.csv("2020-11/202011_GHG_GCHeadspace.csv")  # **CHANGE FOR SAMPLING MONTH**
 
-# Read data for cal checks
-data_cal <- read.csv("GC/Sensor checks/2021-05/Cal checks_042021.csv")  # **CHANGE FOR SAMPLING MONTH**
-
 # Summarize air data for different sites; add column to data file with hsCO2_ppm & hsCH4_ppm (e.g., LabAir, JL Air) - #Air_Location is the ID that will match up with air-water
 # ** need a better way to streamline how we do this - not at all efficient right now! **
 
