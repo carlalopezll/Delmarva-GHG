@@ -103,38 +103,52 @@ FwCH4 <- function(tempC, CH4w.uatm){
 # setwd("/Users/erh82/Dropbox/WetlandConnectCarbon_NSF/data_ghg/") # **CHANGE WITH USERS**
 
 # Carla working space
-setwd("C:/Users/Carla L?pez Lloreda/Dropbox/Grad school/Research/Delmarva project/Data")
+setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva project/Data/Synoptic/Data")
 
 # Read data for synoptic
-data_202011 <- read.csv("2020-11/202011_GHG_GCHeadspace.csv")  # **CHANGE FOR SAMPLING MONTH**
+GHG <- read_csv("2021-05/202105_GHG_GCHeadspace.csv") # **CHANGE FOR SAMPLING MONTH**
 
 # Summarize air data for different sites; add column to data file with hsCO2_ppm & hsCH4_ppm (e.g., LabAir, JL Air) - #Air_Location is the ID that will match up with air-water
 # ** need a better way to streamline how we do this - not at all efficient right now! **
 
-# # work with a subset of the air background samples
-air <- data_cal[ which(data_cal$Rep=="Air"),]
-# 
+
+# Subset air samples to correct dissolved
+air <- GHG[ which(GHG$Rep=="Air"),]
+write.csv(air, "2021-05/202105_Air.csv")
+
+
+# How to improve this workflow??
+
+# Trying to: Filter air samples and summarize mean CO2 concentration ## NOT WORKING :(
+Air_means <- GHG %>%
+  filter(GHG, Rep == "Air") %>%
+  summarize(mean_air_CO2 = mean(CO2_ppm))
+
 # # summary data for CO2
-# with(subset(air, (Air_Location=="AG Air")), summary(CO2_ppm))
-# with(subset(air, (Air_Location=="BCN post-rain")), summary(CO2_ppm))
-# with(subset(air, (Air_Location=="BCN pre-rain")), summary(CO2_ppm))
-# with(subset(air, (Air_Location=="CR Air")), summary(CO2_ppm))
-# with(subset(air, (Air_Location=="JL Air")), summary(CO2_ppm))
-# with(subset(air, (Air_Location=="Jones Rd S Air")), summary(CO2_ppm))
-# with(subset(air, (Air_Location=="lab")), summary(CO2_ppm))
-# with(subset(air, (Air_Location=="streamlab air")), summary(CO2_ppm))
-# with(subset(air, (Air_Location=="Beetree Rd Air")), summary(CO2_ppm))
-# 
+
+with(subset(air, (Air_Location=="AG Air")), summary(CO2_ppm))
+with(subset(air, (Air_Location=="BCN Air")), summary(CO2_ppm))
+with(subset(air, (Air_Location=="Beetree Rd Air")), summary(CO2_ppm))
+with(subset(air, (Air_Location=="CR Air")), summary(CO2_ppm))
+with(subset(air, (Air_Location=="JL Air")), summary(CO2_ppm))
+with(subset(air, (Air_Location=="Jones Rd N Air")), summary(CO2_ppm))
+with(subset(air, (Air_Location=="Jones Rd S Air")), summary(CO2_ppm))
+with(subset(air, (Air_Location=="TR Air")), summary(CO2_ppm))
+with(subset(air, (Air_Location=="lab")), summary(CO2_ppm))
+with(subset(air, (Air_Location=="streamlab air")), summary(CO2_ppm))
+
 # # summary data for CH4
-# with(subset(air, (Air_Location=="AG Air")), summary(CH4_ppm))
-# with(subset(air, (Air_Location=="BCN post-rain")), summary(CH4_ppm))
-# with(subset(air, (Air_Location=="BCN pre-rain")), summary(CH4_ppm))
-# with(subset(air, (Air_Location=="CR Air")), summary(CH4_ppm))
-# with(subset(air, (Air_Location=="JL Air")), summary(CH4_ppm))
-# with(subset(air, (Air_Location=="Jones Rd S Air")), summary(CH4_ppm))
-# with(subset(air, (Air_Location=="lab")), summary(CH4_ppm))
-# with(subset(air, (Air_Location=="streamlab air")), summary(CH4_ppm))
-# with(subset(air, (Air_Location=="Beetree Rd Air")), summary(CH4_ppm))
+
+with(subset(air, (Air_Location=="AG Air")), summary(CH4_ppm))
+with(subset(air, (Air_Location=="BCN Air")), summary(CO2_ppm))
+with(subset(air, (Air_Location=="Beetree Rd Air")), summary(CH4_ppm))
+with(subset(air, (Air_Location=="CR Air")), summary(CH4_ppm))
+with(subset(air, (Air_Location=="JL Air")), summary(CH4_ppm))
+with(subset(air, (Air_Location=="Jones Rd N Air")), summary(CH4_ppm))
+with(subset(air, (Air_Location=="Jones Rd S Air")), summary(CH4_ppm))
+with(subset(air, (Air_Location=="TR Air")), summary(CH4_ppm))
+with(subset(air, (Air_Location=="lab")), summary(CH4_ppm))
+with(subset(air, (Air_Location=="streamlab air")), summary(CH4_ppm))
 
 ########################################
 
@@ -143,8 +157,11 @@ air <- data_cal[ which(data_cal$Rep=="Air"),]
 # Estimate stream CO2/CH4 from GC headspace (uatm) 
 # NOTE: lab temp and pressure are fixed for now, 20C and 102kPa
 
+# Read in data again with appended columns of avg air concentrations
+GHG <- read.csv("2021-05/202105_GHG_GCHeadspace.csv")
+
 # subset the data to exclude air samples
-samp <- data_cal[ which(data_cal$Rep!="Air"),]
+samp <- GHG[ which(GHG$Rep!="Air"),]
 
 # NAs for sites without a site temp. Need to decide on a system for replacing Temp NAs with a median site value or something else....
 
@@ -163,6 +180,6 @@ samp$wCH4_uatm_maxhs <- StmCH4fromSamp(tempLab.C=20, tempSite.C=samp$WaterT_C, k
 # [build additional code here.....]
   
 # Save updated dataframe, samp 
-write.csv(samp, "2020-11/202011_GHG_Wetlands.csv")
+write.csv(samp, "2021-05/202105_GHG_Wetlands.csv")
 
 ########################################
