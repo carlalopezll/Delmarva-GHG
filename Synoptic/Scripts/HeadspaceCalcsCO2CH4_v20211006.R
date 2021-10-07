@@ -5,8 +5,20 @@
 # *** still need to: double-check uatm to umol/m3 conversions
 # *** still need to: finalize best way to group air samples for headspace calcs
 # *** still need to: decide what to do about site w/o temp
-# Last update: 20211006 by CLL
+# *** still need to: fix CH4 calculations
+# Last update: 20211007 by CLL
 ########################################
+
+# Load libraries
+
+library(dplyr) # data manipulation
+library(tidyr) # reshaping data functions
+library(readr) # reading and writing csvs
+library(udunits2) # unit conversions
+library(lubridate)
+library(ggplot2)
+library(scales)
+library(methods)
 
 ############# A. LOAD FUNCTIONS #############
 
@@ -107,7 +119,7 @@ FwCH4 <- function(tempC, CH4w.uatm){
 setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva project/Projects/Synoptic/Data")
 
 # Read data for synoptic
-GHG <- read.csv("2021-06/202106_GHG_GCHeadspace.csv") # **CHANGE FOR SAMPLING MONTH**
+GHG <- read.csv("2021-05/202105_GHG_GCHeadspace.csv") # **CHANGE FOR SAMPLING MONTH**
 
 # Summarize air data for different sites; add column to data file with hsCO2_ppm & hsCH4_ppm (e.g., LabAir, JL Air) - #Air_Location is the ID that will match up with air-water
 # ** need a better way to streamline how we do this - not at all efficient right now! **
@@ -115,15 +127,25 @@ GHG <- read.csv("2021-06/202106_GHG_GCHeadspace.csv") # **CHANGE FOR SAMPLING MO
 
 # Subset air samples to correct dissolved for air used in equilibration
 air <- GHG[ which(GHG$Rep=="Air"),]
-write.csv(air, "2021-06/202106_Air.csv")
+# write.csv(air, "2021-06/202106_Air.csv")
 
 
-# # How to improve this workflow??
-# 
-# # Trying to: Filter air samples and summarize mean CO2 concentration ## NOT WORKING :(
-# Air_means <- GHG %>%
-#   filter(GHG, Rep == "Air") %>%
-#   summarize(mean_air_CO2 = mean(CO2_ppm))
+# Filter air samples, group by location and calculate median  ## add other stats and include CH4
+air_CO2_med <- GHG %>%
+  filter(Rep == "Air") %>%
+  group_by(Air_Location) %>%
+  summarize(median_CO2 = median(CO2_ppm, na.rm = TRUE))
+
+# Save that to a csv
+write.csv(air_CO2_med, "air_CO2_med.csv")
+
+# Adding new column to GHG with median CO2 concentrations
+# Just need to figure out how to grab the values from air_CO2_med table
+
+GHG <- GHG %>% mutate(NEWAIR =
+                     case_when(Air_Location == "CR Air" ~ "SOME CO2 concentration",
+                               Air_Location == "AG Air" ~ 10)
+)
 
 # # summary data for CO2
 
