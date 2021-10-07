@@ -1,6 +1,6 @@
 # Script for plotting Delmarva dissolved GHG synoptic samples
 # Carla López Lloreda
-# Last updated 10/6/2021
+# Last updated 10/7/2021
 
 # Load libraries
 
@@ -11,7 +11,6 @@ library(udunits2) # unit conversions
 library(lubridate)
 library(ggplot2)
 library(scales)
-library(dplyr)
 library(methods)
 
 # Set working directory
@@ -33,8 +32,8 @@ GHG_2011 <- select(GHG_2011_complete, Site, Sample_Type, Site_ID, Sample_Date, w
 GHG_2105_ND <- filter(GHG_2105, Site == "ND") # Only North Dogbone SW and GW sites
 GHG_2011_ND <- filter(GHG_2011, Site == "ND") # Only North Dogbone SW and GW sites
 
-# Trying to filter for all Jackson Lane sites # figuring this out will be useful down the line
-GHG_2105_JL <- filter(GHG_2105, Sample_Type =="SW" & Site == "ND")
+# Trying to subset for all Jackson Lane sites # figuring this out will be useful down the line
+sensor <- filter(GHG_2105, Sample_Type =="SW" & Site == "ND")
 
 # Rearrange factor order from upstream to downstream
 GHG_2011_ND$Site_ID <- factor(GHG_2011_ND$Site_ID,levels = c("ND-UW1", "ND-SW", "ND-UW2"))
@@ -54,7 +53,7 @@ GHG_2011_CH <- filter(GHG_2011, Sample_Type == "CH")  # Channels
 
 ##### Stat summaries ####
 
-# Getting average by site
+# Getting average by site and saving as a csv  # could also do for a general stats summary
 CO2_means <- GHG_2011 %>%
   group_by(Site_ID) %>%
   summarize(mean_CO2 = mean(wCO2_uatm_medhs, na.rm = TRUE))
@@ -65,21 +64,12 @@ CH4_means <- GHG_2011 %>%
   summarize(mean_CH4 = mean(wCH4_uatm_medhs, na.rm = TRUE))
 write.csv(CH4_means, "CH4_means_PCA.csv")
 
-surveys %>% 
-  group_by(sex, species_id) %>%
-  summarize(mean_weight = mean(weight, na.rm = TRUE),
-            sd_weight = sd(weight, na.rm = TRUE))
-
 
 # CO2
-summary(GHG_2105$wCO2_uatm_medhs)    
-# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-# 418.5  4771.1  7279.1 12138.3 16963.3 48826.6
+summary(GHG_2105$wCO2_uatm_medhs)
 
 # CH4
 summary(GHG_2105$wCH4_uatm_medhs)
-# Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
-# -22.37   259.37  1629.73  6523.21  4854.98 50357.17
 
 ##### Plotting data ####
 
@@ -237,19 +227,7 @@ ggplot(GHG_2105_ND, aes(x= Site_ID, y= wCO2_uatm_medhs)) +
                      axis.line = element_line(colour = "black"))
 ggsave("Graphs/2021-05_ND_CO2.jpg")
 
-
-# All synoptic sites + rivers
-
-ggplot(SW_sites, aes(x = Site, y= wCH4_uatm_medhs)) +
-  geom_boxplot() +
-  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
-                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
-                     axis.line = element_line(colour = "black")) +
-  labs(x = "Site", y = "CH4 concentration (uatm)") + 
-  theme(axis.text=element_text(size=10), axis.title=element_text(size=18,face="bold"))
-ggsave("CH4_202011_new.jpg")
-
-### [2] CO2 concentrations across sites
+### CO2 concentrations across sites
 
 # Core sites
 
@@ -271,18 +249,8 @@ ggplot(sensor, aes(x = Site, y= wCO2_uatm_medhs)) +
   theme(axis.text=element_text(size=16), axis.title=element_text(size=18,face="bold"))
 ggsave("CO2_202011_sensor.jpg")
 
-# All synoptic sites + rivers
-ggplot(SW_sites, aes(x = Site, y= wCO2_uatm_medhs)) +
-  geom_boxplot() +
-  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
-                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
-                     axis.line = element_line(colour = "black")) +
-  labs(x = "Site", y = "CO2 concentration (uatm)") + 
-  theme(axis.text=element_text(size=10), axis.title=element_text(size=18,face="bold"))
-ggsave("CO2_202011_new.jpg")
 
-
-### [3] CH4 against CO2
+### CH4 against CO2
 
 ggplot(core_sites,aes(x= wCO2_uatm_medhs, y= wCH4_uatm_medhs)) +
   geom_point() +
@@ -300,25 +268,27 @@ summary(lm(formula = wCH4_uatm_medhs~wCO2_uatm_medhs, data = core_sites))
 
 #######################################
 
-ggplot(ghg, aes(x= Sample.Name, y= CO2_uM, color = Sample.Name)) +
-  stat_boxplot(geom ='errorbar') +
-  geom_boxplot() +
-  labs(x = "Site", y= expression(paste("C","O"[2]^{}*" ("*mu,"M)"))) +
-  ylim(0, 400) +
-  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
-                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
-                     axis.line = element_line(colour = "black"))
+# Axis titles for subscripts in CH4 and CO2 - keep this around
 
-ggsave("Boxplot_CO2.jpg")
-
-# CH4 boxplot for all sites
-
-ggplot(ghg, aes(x= Sample.Name, y= CH4_uM, color = Sample.Name)) +
-  stat_boxplot(geom ='errorbar') +
-  geom_boxplot() +
-  theme(legend.position = "none") +
-  scale_y_log10() +
-  labs(x = "Site", y= expression(paste("C","H"[4]^{}*" ("*mu,"M)"))) +
-  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
-                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
-                     axis.line = element_line(colour = "black"))
+# ggplot(ghg, aes(x= Sample.Name, y= CO2_uM, color = Sample.Name)) +
+#   stat_boxplot(geom ='errorbar') +
+#   geom_boxplot() +
+#   labs(x = "Site", y= expression(paste("C","O"[2]^{}*" ("*mu,"M)"))) +
+#   ylim(0, 400) +
+#   theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
+#                      panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+#                      axis.line = element_line(colour = "black"))
+# 
+# ggsave("Boxplot_CO2.jpg")
+# 
+# # CH4 boxplot for all sites
+# 
+# ggplot(ghg, aes(x= Sample.Name, y= CH4_uM, color = Sample.Name)) +
+#   stat_boxplot(geom ='errorbar') +
+#   geom_boxplot() +
+#   theme(legend.position = "none") +
+#   scale_y_log10() +
+#   labs(x = "Site", y= expression(paste("C","H"[4]^{}*" ("*mu,"M)"))) +
+#   theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
+#                      panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+#                      axis.line = element_line(colour = "black"))
