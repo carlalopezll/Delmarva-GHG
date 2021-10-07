@@ -1,6 +1,6 @@
 # Script for plotting Delmarva dissolved GHG synoptic samples
 # Carla López Lloreda
-# Last updated 10/5/2021
+# Last updated 10/6/2021
 
 # Load libraries
 
@@ -15,50 +15,172 @@ library(dplyr)
 library(methods)
 
 # Set working directory
-setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva project/Data/Synoptic/Data")
+setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva project/Projects/Synoptic/Data")
 
-# Read in processed GHG dara
-DMV_GHG_complete <- read_csv("2021-05/202105_GHG_Wetlands.csv")
-
-# Adding new ID columns ### Need to work on
-# Site IDs (withouth the SW or UW)         ## Added manually for now
-# Surface water vs groundwater
+# Read in processed GHG data for all synoptic sampling dates
+GHG_2105_complete <- read_csv("2021-05/202105_GHG_Wetlands.csv")
+GHG_2011_complete <- read_csv("2020-11/202011_GHG_Wetlands.csv")
    
-########## Subsetting the data ###########
+#### Subsetting the data ####
 
-# Subsetting by rows (filter) and columns (select)
-filter(DMV_GHG, Site == "ND")
+# Subsetting to include only sample info and GHG concentrations & remove NAs
+GHG_2105 <- select(GHG_2105_complete, Site, Sample_Type, Site_ID, Sample_Date, wCO2_uatm_medhs, wCH4_uatm_medhs) %>%
+  na.omit(GHG_2105)
+GHG_2011 <- select(GHG_2011_complete, Site, Sample_Type, Site_ID, Sample_Date, wCO2_uatm_medhs, wCH4_uatm_medhs) %>%
+  na.omit(GHG_2011)
 
-# Subsetting to include only site ID and GHG concentrations
-DMV_GHG <- select(DMV_GHG_complete, Site_ID, wCO2_uatm_medhs, wCH4_uatm_medhs)
-
-# Removing NAs
-DMV_GHG <- na.omit(DMV_GHG)
 # Subsetting by catchment
-DMV_GHG_ND <- filter(DMV_GHG, Site_ID == "ND-SW" | Site_ID == "ND-UW1" | Site_ID == "ND-UW3")
+GHG_2105_ND <- filter(GHG_2105, Site == "ND") # Only North Dogbone SW and GW sites
+GHG_2011_ND <- filter(GHG_2011, Site == "ND") # Only North Dogbone SW and GW sites
 
-# Plotting GHG on ND transect SW-GW transect
-ggplot(DMV_GHG_ND, aes(x= Site_ID, y= wCH4_uatm_medhs)) +
-  geom_boxplot() +
-  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
-                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
-                     axis.line = element_line(colour = "black"))
+# Trying to filter for all Jackson Lane sites # figuring this out will be useful down the line
+GHG_2105_JL <- filter(GHG_2105, Sample_Type =="SW" & Site == "ND")
+
+# Rearrange factor order from upstream to downstream
+GHG_2011_ND$Site_ID <- factor(GHG_2011_ND$Site_ID,levels = c("ND-UW1", "ND-SW", "ND-UW2"))
+GHG_2105_ND$Site_ID <- factor(GHG_2105_ND$Site_ID, levels = c("ND-UW1", "ND-SW", "ND-UW2"))
 
 
 
-######## Graph some data ###########
+# Subsetting by sample type
+GHG_2105_SW <- filter(GHG_2105, Sample_Type == "SW")  # Surface water
+GHG_2105_GW <- filter(GHG_2105, Sample_Type == "UW")  # Groundwater
+GHG_2105_CH <- filter(GHG_2105, Sample_Type == "CH")  # Channels
 
-ggplot(DMV_GHG, aes(x= wCO2_uatm_medhs, y= wCH4_uatm_medhs)) +
-  geom_point() +
-  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
-                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
-                     axis.line = element_line(colour = "black"))
+GHG_2011_SW <- filter(GHG_2011, Sample_Type == "SW")  # Surface water
+GHG_2011_GW <- filter(GHG_2011, Sample_Type == "UW")  # Groundwater
+GHG_2011_CH <- filter(GHG_2011, Sample_Type == "CH")  # Channels
 
-### [1] GHG concentrations across sites
+
+##### Stat summaries ####
+
+# Getting average by site
+CO2_means <- GHG_2011 %>%
+  group_by(Site_ID) %>%
+  summarize(mean_CO2 = mean(wCO2_uatm_medhs, na.rm = TRUE))
+write.csv(CO2_means, "CO2_means_PCA.csv")
+
+CH4_means <- GHG_2011 %>%
+  group_by(Site_ID) %>%
+  summarize(mean_CH4 = mean(wCH4_uatm_medhs, na.rm = TRUE))
+write.csv(CH4_means, "CH4_means_PCA.csv")
+
+surveys %>% 
+  group_by(sex, species_id) %>%
+  summarize(mean_weight = mean(weight, na.rm = TRUE),
+            sd_weight = sd(weight, na.rm = TRUE))
+
+
+# CO2
+summary(GHG_2105$wCO2_uatm_medhs)    
+# Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+# 418.5  4771.1  7279.1 12138.3 16963.3 48826.6
 
 # CH4
+summary(GHG_2105$wCH4_uatm_medhs)
+# Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+# -22.37   259.37  1629.73  6523.21  4854.98 50357.17
 
-ggplot(DMV_GHG, aes(x = Site, y= wCH4_uatm_medhs)) +
+##### Plotting data ####
+
+# [1] GHG concentrations across sites
+
+# CH4- 202105
+
+ggplot(GHG_2105_SW, aes(x = Site, y= wCH4_uatm_medhs)) +
+  geom_boxplot() +
+  labs(x = "Site", y = "CH4 concentration (uatm)") + 
+  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.line = element_line(colour = "black")) +
+  coord_cartesian(ylim = c(0, 50000)) +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=18,face="bold"))
+
+ggsave("Graphs/2021-05_SW_CH4.jpg")
+
+# CO2- 202105
+
+ggplot(GHG_2105_SW, aes(x = Site, y= wCO2_uatm_medhs)) +
+  geom_boxplot() +
+  labs(x = "Site", y = "CO2 concentration (uatm)") + 
+  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.line = element_line(colour = "black")) +
+  coord_cartesian(ylim = c(0, 12000)) +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=18,face="bold"))
+
+ggsave("Graphs/2021-05_SW_CO2.jpg")
+
+
+# CH4- 202011
+
+ggplot(GHG_2011_SW, aes(x = Site, y= wCH4_uatm_medhs)) +
+  geom_boxplot() +
+  labs(x = "Site", y = "CH4 concentration (uatm)") + 
+  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.line = element_line(colour = "black")) +
+  coord_cartesian(ylim = c(0, 50000)) +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=18,face="bold"))
+
+ggsave("Graphs/2020-11_SW_CH4.jpg")
+
+# CO2- 202011
+
+ggplot(GHG_2011_SW, aes(x = Site, y= wCO2_uatm_medhs)) +
+  geom_boxplot() +
+  labs(x = "Site", y = "CO2 concentration (uatm)") + 
+  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.line = element_line(colour = "black")) +
+  coord_cartesian(ylim = c(0, 12000)) +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=18,face="bold"))
+
+ggsave("Graphs/2020-11_SW_CO2.jpg")
+
+
+# CH4 against CO2 for surface water
+ggplot(GHG_2105_SW, aes(x= wCO2_uatm_medhs, y= wCH4_uatm_medhs, color = Site)) +
+  geom_point() +
+  theme_bw() + theme(legend.position = "right", panel.border = element_blank(), 
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.line = element_line(colour = "black"))
+
+# CH4 against CO2 for groundwater
+ggplot(GHG_2105_GW, aes(x= wCO2_uatm_medhs, y= wCH4_uatm_medhs, color = Site)) +
+  geom_point() +
+  theme_bw() + theme(legend.position = "right", panel.border = element_blank(), 
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.line = element_line(colour = "black"))
+
+
+# CO2 SW vs GW (2020-11)
+
+ggplot(GHG_2011, aes(x = Sample_Type, y= wCO2_uatm_medhs)) +
+  geom_boxplot() +
+  labs(x = "Site", y = "CO2 concentration (uatm)") + 
+  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.line = element_line(colour = "black")) +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=18,face="bold"))
+
+ggsave("Graphs/2020-11_CO2_Boxplot.jpg")
+
+# CO2 SW vs GW (2020-11)
+
+ggplot(GHG_2105, aes(x = Sample_Type, y= wCO2_uatm_medhs)) +
+  geom_boxplot() +
+  labs(x = "Site", y = "CO2 concentration (uatm)") + 
+  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.line = element_line(colour = "black")) +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=18,face="bold"))
+
+ggsave("Graphs/2021-05_CO2_Boxplot.jpg")
+
+# CH4 SW vs GW (2020-11)
+
+ggplot(GHG_2011, aes(x = Sample_Type, y= wCH4_uatm_medhs)) +
   geom_boxplot() +
   labs(x = "Site", y = "CH4 concentration (uatm)") + 
   theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
@@ -66,8 +188,54 @@ ggplot(DMV_GHG, aes(x = Site, y= wCH4_uatm_medhs)) +
                      axis.line = element_line(colour = "black")) +
   theme(axis.text=element_text(size=12), axis.title=element_text(size=18,face="bold"))
 
-ggsave("Graphs/2021-05_CH4.jpg")
+ggsave("Graphs/2020-11_CH4_Boxplot.jpg")
 
+# CH4 SW vs GW (2020-11)
+
+ggplot(GHG_2105, aes(x = Sample_Type, y= wCH4_uatm_medhs)) +
+  geom_boxplot() +
+  labs(x = "Site", y = "CH4 concentration (uatm)") + 
+  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.line = element_line(colour = "black")) +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=18,face="bold"))
+
+ggsave("Graphs/2021-05_CH4_Boxplot.jpg")
+
+
+# Plotting GHG on ND SW-GW transect
+
+# ND SW-GW: 2020-11
+
+ggplot(GHG_2011_ND, aes(x= Site_ID, y= wCH4_uatm_medhs)) +
+  geom_boxplot() +
+  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.line = element_line(colour = "black"))
+ggsave("Graphs/2021-05_ND_CH4.jpg")
+
+ggplot(GHG_2011_ND, aes(x= Site_ID, y= wCO2_uatm_medhs)) +
+  geom_boxplot() +
+  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.line = element_line(colour = "black"))
+ggsave("Graphs/2021-05_ND_CO2.jpg")
+
+# ND SW-GW: 2021-05
+
+ggplot(GHG_2105_ND, aes(x= Site_ID, y= wCH4_uatm_medhs)) +
+  geom_boxplot() +
+  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.line = element_line(colour = "black"))
+ggsave("Graphs/2021-05_ND_CH4.jpg")
+
+ggplot(GHG_2105_ND, aes(x= Site_ID, y= wCO2_uatm_medhs)) +
+  geom_boxplot() +
+  theme_bw() + theme(legend.position = "none", panel.border = element_blank(), 
+                     panel.grid.major = element_blank(), panel.grid.minor = element_blank(), 
+                     axis.line = element_line(colour = "black"))
+ggsave("Graphs/2021-05_ND_CO2.jpg")
 
 
 # All synoptic sites + rivers

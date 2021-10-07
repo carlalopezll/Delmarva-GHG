@@ -5,3 +5,4 @@ Fluxes/
 .Rhistory
 
 *.csv
+.Rproj.user
