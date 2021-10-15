@@ -35,9 +35,13 @@ KH.CO2 <- function(tempC){
 # units are mol L-1 atm-1
 KH.CH4 <- function(tempC){
   tempK <- tempC + 273.15
-  KH.CH4  <- exp(-115.6477+(155.5756/((tempK)/100))+65.2553* log( ((tempK)/100), base=exp(1) ) -6.1698*((tempK)/100))*1000/18.0153
+  KH.CH4  <- 1000/18.0153*(exp(-115.6477 + (155.5756/(tempK/100)) + 65.2553 * log((tempK/100)) - 6.1698 * (tempK/100)))
   KH.CH4
 }
+
+# CLL KH.CH4 = 1000/18.0153*(exp(-115.6477 + (155.5756/(tempK/100)) + 65.2553 * log((tempK/100)) - 6.1698 * (tempK/100)))
+
+# ERH KH.CH4 = exp(-115.6477 + (155.5756/((tempK)/100))+65.2553* log( ((tempK)/100), base=exp(1) ) -6.1698*((tempK)/100))*1000/18.0153
 
 ##### [3] FUNCTION TO ESTIMATE STREAM pCO2 from headspace sample data (what the GC gives you) ####
 # temp inputs are in C
@@ -91,7 +95,21 @@ StmCH4fromSamp <- function(tempLab.C, tempSite.C, kPa, gasV, waterV, pCH4.samp, 
   StmCH4
 }
 
-##### [6] FUNCTION TO CONVERT pCH4 from uatm to umol/m3 
+
+
+# Testing fixes for CH4 ----- nope, same as above
+
+StmCH4fromSamp <- function(tempLab.C, tempSite.C, kPa, gasV, waterV, pCH4.samp, pCH4.hs){
+  tempLab.K <- tempLab.C + 273.15
+  molV <- 0.082057*(tempLab.K)*(101.325/kPa) # L mol-1 calculated for lab conditions
+  hsRatio <- gasV/waterV
+  KH.Lab <- KH.CH4(tempLab.C) # mol L-1 atm-1
+  KH.Site <- KH.CH4(tempSite.C) # mol L-1 atm-1
+  StmCH4 <- ((pCH4.samp * KH.Lab) + (hsRatio * ((pCH4.samp-pCH4.hs)/molV))) / KH.Site
+  StmCH4
+}
+
+##### [6] FUNCTION TO CONVERT pCH4 from uatm to umol/m3 ####
 # **** Need to check updated code specific to CH4 (not CO2) ****
 # 1 m3 = 1000 L; convert umol/m3 to umol/L = Fw/1000
 FwCH4 <- function(tempC, CH4w.uatm){
@@ -139,7 +157,7 @@ air_CO2_med <- GHG %>%
 # Save that to a csv
 write.csv(air_CO2_med, "air_CO2_med.csv")
 
-# Adding new column to GHG with median CO2 concentrations
+# Adding new column to GHG with median CO2 concentrations   # ASK JP
 # Just need to figure out how to grab the values from air_CO2_med table
 
 GHG <- GHG %>% mutate(NEWAIR =
@@ -199,10 +217,16 @@ samp$wCH4_uatm_minhs <- StmCH4fromSamp(tempLab.C=20, tempSite.C=samp$WaterT_C, k
 samp$wCH4_uatm_maxhs <- StmCH4fromSamp(tempLab.C=20, tempSite.C=samp$WaterT_C, kPa=102, gasV=samp$AirV_mL, waterV=samp$WaterV_mL, pCH4.samp=samp$CH4_ppm, pCH4.hs=samp$AirCH4_max_ppm)
 # VALUES ARE WAYYY TOO HIGH - need to revisit...done for now /E *****************************
   
-# CONVERT pCO2 and pCH4 from uatm to umol/m3 ** check on these conversions, especially for CH4! **
-# [build additional code here.....]
+#### CONVERT pCO2 and pCH4 from uatm to umol/m3 ** check on these conversions, especially for CH4! ** ####
+# Need to finalize - CLL
+
+samp$wCO2_vol_med <- FwCO2(tempC = samp$WaterT_C, CO2w.uatm = samp$wCO2_uatm_medhs)
+samp$wCH4_vol_med <- FwCH4(tempC = samp$WaterT_C, CH4w.uatm = samp$wCH4_uatm_medhs) # this needs to be double-checked
+
+#### CONVERT umol/m3 to umol/L
+
+samp$wCO2_volL_med <- samp$wCO2_vol_med / 1000
+samp$wCH4_volL_med <- samp$wCH4_vol_med / 1000
   
 # Save updated dataframe, samp 
 write.csv(samp, "2021-05/202105_GHG_Wetlands_new.csv")
-
-########################################
