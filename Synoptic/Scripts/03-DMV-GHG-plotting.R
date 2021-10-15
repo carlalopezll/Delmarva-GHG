@@ -19,6 +19,8 @@ setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva proje
 # Read in processed GHG data for all synoptic sampling dates
 GHG_2105_complete <- read_csv("2021-05/202105_GHG_Wetlands.csv")
 GHG_2011_complete <- read_csv("2020-11/202011_GHG_Wetlands.csv")
+
+GHG_2105_complete <- read_csv("2021-05/202105_GHG_Wetlands_new.csv")
    
 #### Subsetting the data ####
 
@@ -70,6 +72,29 @@ summary(GHG_2105$wCO2_uatm_medhs)
 
 # CH4
 summary(GHG_2105$wCH4_uatm_medhs)
+
+#### Plotting distributions ####
+
+GHG_2105_complete %>%
+  filter(Sample_Type == "SW") %>%
+  ggplot(aes(x=wCH4_volL_med)) +
+  labs(x = "CH4 concentrations (umol/L)") +
+  geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8) +
+  geom_vline(xintercept = 20, size = 1)
+
+
+GHG_2105_complete %>%
+  filter(Sample_Type == "SW") %>%
+  filter(wCH4_volL_med < 1000) %>%
+  ggplot(aes(x=wCH4_volL_med)) +
+  labs(x = "CH4 concentrations (umol/L)") + 
+  geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8) +
+  geom_vline(xintercept = 20)
+
+data %>%
+  filter( price<300 ) %>%
+  ggplot( aes(x=price)) +
+  geom_density(fill="#69b3a2", color="#e9ecef", alpha=0.8)
 
 ##### Plotting data ####
 
