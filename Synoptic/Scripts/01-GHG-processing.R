@@ -6,7 +6,7 @@
 # *** still need to: finalize best way to group air samples for headspace calcs
 # *** still need to: decide what to do about site w/o temp
 # *** still need to: fix CH4 calculations
-# Last update: 20211007 by CLL
+# Last update: 20211029 by CLL
 ########################################
 
 # Load libraries
@@ -16,7 +16,6 @@ library(tidyr) # reshaping data functions
 library(readr) # reading and writing csvs
 library(udunits2) # unit conversions
 library(lubridate)
-library(ggplot2)
 library(scales)
 library(methods)
 
@@ -35,13 +34,9 @@ KH.CO2 <- function(tempC){
 # units are mol L-1 atm-1
 KH.CH4 <- function(tempC){
   tempK <- tempC + 273.15
-  KH.CH4  <- 1000/18.0153*(exp(-115.6477 + (155.5756/(tempK/100)) + 65.2553 * log((tempK/100)) - 6.1698 * (tempK/100)))
+  KH.CH4  <- exp(-115.6477 + (155.5756/((tempK)/100))+65.2553* log( ((tempK)/100), base=exp(1) ) -6.1698*((tempK)/100))*1000/18.0153
   KH.CH4
 }
-
-# CLL KH.CH4 = 1000/18.0153*(exp(-115.6477 + (155.5756/(tempK/100)) + 65.2553 * log((tempK/100)) - 6.1698 * (tempK/100)))
-
-# ERH KH.CH4 = exp(-115.6477 + (155.5756/((tempK)/100))+65.2553* log( ((tempK)/100), base=exp(1) ) -6.1698*((tempK)/100))*1000/18.0153
 
 ##### [3] FUNCTION TO ESTIMATE STREAM pCO2 from headspace sample data (what the GC gives you) ####
 # temp inputs are in C
@@ -95,20 +90,6 @@ StmCH4fromSamp <- function(tempLab.C, tempSite.C, kPa, gasV, waterV, pCH4.samp, 
   StmCH4
 }
 
-
-
-# Testing fixes for CH4 ----- nope, same as above
-
-StmCH4fromSamp <- function(tempLab.C, tempSite.C, kPa, gasV, waterV, pCH4.samp, pCH4.hs){
-  tempLab.K <- tempLab.C + 273.15
-  molV <- 0.082057*(tempLab.K)*(101.325/kPa) # L mol-1 calculated for lab conditions
-  hsRatio <- gasV/waterV
-  KH.Lab <- KH.CH4(tempLab.C) # mol L-1 atm-1
-  KH.Site <- KH.CH4(tempSite.C) # mol L-1 atm-1
-  StmCH4 <- ((pCH4.samp * KH.Lab) + (hsRatio * ((pCH4.samp-pCH4.hs)/molV))) / KH.Site
-  StmCH4
-}
-
 ##### [6] FUNCTION TO CONVERT pCH4 from uatm to umol/m3 ####
 # **** Need to check updated code specific to CH4 (not CO2) ****
 # 1 m3 = 1000 L; convert umol/m3 to umol/L = Fw/1000
@@ -143,27 +124,25 @@ GHG <- read.csv("2021-05/202105_GHG_GCHeadspace.csv") # **CHANGE FOR SAMPLING MO
 # ** need a better way to streamline how we do this - not at all efficient right now! **
 
 
-# Subset air samples to correct dissolved for air used in equilibration
-air <- GHG[ which(GHG$Rep=="Air"),]
-# write.csv(air, "2021-06/202106_Air.csv")
+# # Subset air samples to correct dissolved for air used in equilibration
+# air <- GHG[ which(GHG$Rep=="Air"),]
+# # write.csv(air, "2021-06/202106_Air.csv")
 
+# Alternative to above:
 
 # Filter air samples, group by location and calculate median  ## add other stats and include CH4
-air_CO2_med <- GHG %>%
+air_summary <- GHG %>%
   filter(Rep == "Air") %>%
   group_by(Air_Location) %>%
-  summarize(median_CO2 = median(CO2_ppm, na.rm = TRUE))
+  summarize(median_CO2 = median(CO2_ppm, na.rm = TRUE), median_CH4 = median(CH4_ppm, na.rm = TRUE))
 
-# Save that to a csv
-write.csv(air_CO2_med, "air_CO2_med.csv")
+# Save GHG median to a csv
+write.csv(air_summary, "air_summary.csv")
 
-# Adding new column to GHG with median CO2 concentrations   # ASK JP
+# Adding new column to GHG with median CO2 concentrations   # NEED HELP ASK JP
 # Just need to figure out how to grab the values from air_CO2_med table
 
-GHG <- GHG %>% mutate(NEWAIR =
-                     case_when(Air_Location == "CR Air" ~ "SOME CO2 concentration",
-                               Air_Location == "AG Air" ~ 10)
-)
+
 
 # # summary data for CO2
 
@@ -220,13 +199,23 @@ samp$wCH4_uatm_maxhs <- StmCH4fromSamp(tempLab.C=20, tempSite.C=samp$WaterT_C, k
 #### CONVERT pCO2 and pCH4 from uatm to umol/m3 ** check on these conversions, especially for CH4! ** ####
 # Need to finalize - CLL
 
-samp$wCO2_vol_med <- FwCO2(tempC = samp$WaterT_C, CO2w.uatm = samp$wCO2_uatm_medhs)
-samp$wCH4_vol_med <- FwCH4(tempC = samp$WaterT_C, CH4w.uatm = samp$wCH4_uatm_medhs) # this needs to be double-checked
+samp$wCO2_umolm3_med <- FwCO2(tempC = samp$WaterT_C, CO2w.uatm = samp$wCO2_uatm_medhs)
+samp$wCH4_umolm3_med <- FwCH4(tempC = samp$WaterT_C, CH4w.uatm = samp$wCH4_uatm_medhs) # this needs to be double-checked
 
 #### CONVERT umol/m3 to umol/L
 
-samp$wCO2_volL_med <- samp$wCO2_vol_med / 1000
-samp$wCH4_volL_med <- samp$wCH4_vol_med / 1000
+samp$wCO2_umolL_med <- samp$wCO2_umolm3_med / 1000
+samp$wCH4_umolL_med <- samp$wCH4_umolm3_med / 1000
+
+#### Final spreadsheet for sharing: Getting averages and removing columns ####
+
+DMV_GHG_med <- samp %>%
+  select(Site, Sample_Type, Site_ID, Sample_Date, wCO2_umolL_med, wCH4_umolL_med) %>%
+  group_by(Site_ID) %>%
+  summarize(CO2_median = median(wCO2_umolL_med, na.rm = TRUE), CH4_median = median(wCH4_umolL_med, na.rm = TRUE))
   
 # Save updated dataframe, samp 
-write.csv(samp, "2021-05/202105_GHG_Wetlands_new.csv")
+write.csv(samp, "2021-05/202105_GHG_Wetlands.csv")
+
+# Save clean, averaged spreadsheet
+write.csv(DMV_GHG_med, "202105_GHG_Clean.csv")
