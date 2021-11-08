@@ -106,6 +106,7 @@ FwCH4 <- function(tempC, CH4w.uatm){
   CH4wM
 }
 
+
 ########################################
 
 ############# B. LOAD/MERGE DATA FILES #############
@@ -118,57 +119,24 @@ FwCH4 <- function(tempC, CH4w.uatm){
 setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva project/Projects/Synoptic/Data")
 
 # Read data for synoptic
-GHG <- read.csv("2021-05/202105_GHG_GCHeadspace.csv") # **CHANGE FOR SAMPLING MONTH**
+GHG <- read.csv("2021-06/202106_GHG_GCHeadspace.csv") # **CHANGE FOR SAMPLING MONTH**
 
-# Summarize air data for different sites; add column to data file with hsCO2_ppm & hsCH4_ppm (e.g., LabAir, JL Air) - #Air_Location is the ID that will match up with air-water
-# ** need a better way to streamline how we do this - not at all efficient right now! **
-
-
-# # Subset air samples to correct dissolved for air used in equilibration
-# air <- GHG[ which(GHG$Rep=="Air"),]
-# # write.csv(air, "2021-06/202106_Air.csv")
-
-# Alternative to above:
+# Summarize air data for different sites; add column to data file with hsCO2_ppm & hsCH4_ppm (e.g., LabAir, JL Air)
+# Air_Location is the ID that will match up with air-water
 
 # Filter air samples, group by location and calculate median  ## add other stats and include CH4
 air_summary <- GHG %>%
   filter(Rep == "Air") %>%
   group_by(Air_Location) %>%
-  summarize(median_CO2 = median(CO2_ppm, na.rm = TRUE), median_CH4 = median(CH4_ppm, na.rm = TRUE))
+  summarize(AirCO2_min_ppm = min(CO2_ppm, na.rm = TRUE), AirCO2_med_ppm = median(CO2_ppm, na.rm = TRUE), 
+   AirCO2_max_ppm = max(CO2_ppm, na.rm = TRUE), AirCH4_min_ppm = min(CH4_ppm, na.rm = TRUE),
+   AirCH4_med_ppm = median(CH4_ppm, na.rm = TRUE), AirCH4_max_ppm = max(CH4_ppm, na.rm = TRUE))
 
 # Save GHG median to a csv
-write.csv(air_summary, "air_summary.csv")
+write.csv(air_summary, "2021-06/air_summary.csv")
 
-# Adding new column to GHG with median CO2 concentrations   # NEED HELP ASK JP
-# Just need to figure out how to grab the values from air_CO2_med table
-
-
-
-# # summary data for CO2
-
-with(subset(air, (Air_Location=="AG Air")), summary(CO2_ppm))
-with(subset(air, (Air_Location=="BCN Air")), summary(CO2_ppm))
-with(subset(air, (Air_Location=="Beetree Rd Air")), summary(CO2_ppm))
-with(subset(air, (Air_Location=="CR Air")), summary(CO2_ppm))
-with(subset(air, (Air_Location=="JL Air")), summary(CO2_ppm))
-with(subset(air, (Air_Location=="Jones Rd N Air")), summary(CO2_ppm))
-with(subset(air, (Air_Location=="Jones Rd S Air")), summary(CO2_ppm))
-with(subset(air, (Air_Location=="TR Air")), summary(CO2_ppm))
-with(subset(air, (Air_Location=="lab")), summary(CO2_ppm))
-with(subset(air, (Air_Location=="streamlab air")), summary(CO2_ppm))
-
-# # summary data for CH4
-
-with(subset(air, (Air_Location=="AG Air")), summary(CH4_ppm))
-with(subset(air, (Air_Location=="BCN Air")), summary(CO2_ppm))
-with(subset(air, (Air_Location=="Beetree Rd Air")), summary(CH4_ppm))
-with(subset(air, (Air_Location=="CR Air")), summary(CH4_ppm))
-with(subset(air, (Air_Location=="JL Air")), summary(CH4_ppm))
-with(subset(air, (Air_Location=="Jones Rd N Air")), summary(CH4_ppm))
-with(subset(air, (Air_Location=="Jones Rd S Air")), summary(CH4_ppm))
-with(subset(air, (Air_Location=="TR Air")), summary(CH4_ppm))
-with(subset(air, (Air_Location=="lab")), summary(CH4_ppm))
-with(subset(air, (Air_Location=="streamlab air")), summary(CH4_ppm))
+# Adding summary air columns to GHG
+GHG_new <- left_join(GHG, air_summary, by = "Air_Location")
 
 ########################################
 
@@ -204,15 +172,15 @@ samp$wCH4_umolm3_med <- FwCH4(tempC = samp$WaterT_C, CH4w.uatm = samp$wCH4_uatm_
 
 #### CONVERT umol/m3 to umol/L
 
-samp$wCO2_umolL_med <- samp$wCO2_umolm3_med / 1000
-samp$wCH4_umolL_med <- samp$wCH4_umolm3_med / 1000
+samp$wCO2_uM_med <- samp$wCO2_umolm3_med / 1000
+samp$wCH4_uM_med <- samp$wCH4_umolm3_med / 1000
 
 #### Final spreadsheet for sharing: Getting averages and removing columns ####
 
 DMV_GHG_med <- samp %>%
-  select(Site, Sample_Type, Site_ID, Sample_Date, wCO2_umolL_med, wCH4_umolL_med) %>%
+  select(Site, Sample_Type, Site_ID, Sample_Date, wCO2_uM_med, wCH4_uM_med) %>%
   group_by(Site_ID) %>%
-  summarize(CO2_median = median(wCO2_umolL_med, na.rm = TRUE), CH4_median = median(wCH4_umolL_med, na.rm = TRUE))
+  summarize(CO2_median_uM = median(wCO2_uM_med, na.rm = TRUE), CH4_median_uM = median(wCH4_uM_med, na.rm = TRUE))
   
 # Save updated dataframe, samp 
 write.csv(samp, "2021-05/202105_GHG_Wetlands.csv")
