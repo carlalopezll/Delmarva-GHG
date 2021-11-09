@@ -3,10 +3,9 @@
 # Coded/checked/updated by ERH from UQAM/Krycklan files
 # Code updated for Delmarva Project by ERH
 # *** still need to: double-check uatm to umol/m3 conversions
-# *** still need to: finalize best way to group air samples for headspace calcs
 # *** still need to: decide what to do about site w/o temp
 # *** still need to: fix CH4 calculations
-# Last update: 20211029 by CLL
+# Last update: 20211109 by CLL
 ########################################
 
 # Load libraries
@@ -37,6 +36,18 @@ KH.CH4 <- function(tempC){
   KH.CH4  <- exp(-115.6477 + (155.5756/((tempK)/100))+65.2553* log( ((tempK)/100), base=exp(1) ) -6.1698*((tempK)/100))*1000/18.0153
   KH.CH4
 }
+
+
+# From NEON
+
+
+# From Kelly Aho script
+
+# KH.CH4 <- function(tempC){
+#   tempK <- tempC + 273.15
+#   KH.CH4  <- 0.000014*exp(1900*(1/(tempK)-1/298.15))*101325/1000
+#   KH.CH4
+# }
 
 ##### [3] FUNCTION TO ESTIMATE STREAM pCO2 from headspace sample data (what the GC gives you) ####
 # temp inputs are in C
@@ -90,6 +101,7 @@ StmCH4fromSamp <- function(tempLab.C, tempSite.C, kPa, gasV, waterV, pCH4.samp, 
   StmCH4
 }
 
+
 ##### [6] FUNCTION TO CONVERT pCH4 from uatm to umol/m3 ####
 # **** Need to check updated code specific to CH4 (not CO2) ****
 # 1 m3 = 1000 L; convert umol/m3 to umol/L = Fw/1000
@@ -119,13 +131,19 @@ FwCH4 <- function(tempC, CH4w.uatm){
 setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva project/Projects/Synoptic/Data")
 
 # Read data for synoptic
-GHG <- read.csv("2021-06/202106_GHG_GCHeadspace.csv") # **CHANGE FOR SAMPLING MONTH**
+GHG <- read.csv("2021-09/202109_GHG_GCHeadspace.csv") # **CHANGE FOR SAMPLING MONTH**
+
+# Add the Site column (two letters), if the spreadsheet doesn't have the Site column
+# GHG$Site <- substr(GHG [ , 7], start= 1, stop= 2) # Make sure that you have the right column for Site_ID
+
+# Add the sample typpe (SW, GW, CH), if the spreadsheet doesn't have sample type
+# GHG$Sample_Type <- substr(GHG [ , 7], start= 4, stop = 6) # Make sure that you have the right column for Site_ID
 
 # Summarize air data for different sites; add column to data file with hsCO2_ppm & hsCH4_ppm (e.g., LabAir, JL Air)
 # Air_Location is the ID that will match up with air-water
 
-# Filter air samples, group by location and calculate median  ## add other stats and include CH4
-air_summary <- GHG %>%
+# Filter air samples, group by location and calculate median, max and min
+Air_summary <- GHG %>%
   filter(Rep == "Air") %>%
   group_by(Air_Location) %>%
   summarize(AirCO2_min_ppm = min(CO2_ppm, na.rm = TRUE), AirCO2_med_ppm = median(CO2_ppm, na.rm = TRUE), 
@@ -133,10 +151,10 @@ air_summary <- GHG %>%
    AirCH4_med_ppm = median(CH4_ppm, na.rm = TRUE), AirCH4_max_ppm = max(CH4_ppm, na.rm = TRUE))
 
 # Save GHG median to a csv
-write.csv(air_summary, "2021-06/air_summary.csv")
+write.csv(Air_summary, "2021-09/202109_Air_summary.csv")  # **CHANGE FOR SAMPLING MONTH**
 
 # Adding summary air columns to GHG
-GHG_new <- left_join(GHG, air_summary, by = "Air_Location")
+GHG_new <- left_join(GHG, Air_summary, by = "Air_Location")
 
 ########################################
 
@@ -145,11 +163,8 @@ GHG_new <- left_join(GHG, air_summary, by = "Air_Location")
 # Estimate stream CO2/CH4 from GC headspace (uatm) 
 # NOTE: lab temp and pressure are fixed for now, 20C and 102kPa
 
-# Read in data again with appended columns of avg air concentrations
-GHG <- read.csv("2021-05/202105_GHG_GCHeadspace.csv")
-
 # subset the data to exclude air samples
-samp <- GHG[ which(GHG$Rep!="Air"),]
+samp <- GHG_new[ which(GHG_new$Rep!="Air"), ]
 
 # NAs for sites without a site temp. Need to decide on a system for replacing Temp NAs with a median site value or something else....
 
@@ -175,15 +190,16 @@ samp$wCH4_umolm3_med <- FwCH4(tempC = samp$WaterT_C, CH4w.uatm = samp$wCH4_uatm_
 samp$wCO2_uM_med <- samp$wCO2_umolm3_med / 1000
 samp$wCH4_uM_med <- samp$wCH4_umolm3_med / 1000
 
+# Save updated dataframe, samp 
+write.csv(samp, "2021-09/202109_GHG_Wetlands.csv")  # **CHANGE FOR SAMPLING MONTH**
+
 #### Final spreadsheet for sharing: Getting averages and removing columns ####
 
-DMV_GHG_med <- samp %>%
-  select(Site, Sample_Type, Site_ID, Sample_Date, wCO2_uM_med, wCH4_uM_med) %>%
+# Select columns of interest, group by site and get averages
+# Need to find a way to include other columns: Site, Sample_Type, Sample_Date
+samp_clean <- samp %>%
   group_by(Site_ID) %>%
-  summarize(CO2_median_uM = median(wCO2_uM_med, na.rm = TRUE), CH4_median_uM = median(wCH4_uM_med, na.rm = TRUE))
+  summarize(CO2_uM = median(wCO2_uM_med, na.rm = TRUE), CH4_uM = median(wCH4_uM_med, na.rm = TRUE))
   
-# Save updated dataframe, samp 
-write.csv(samp, "2021-05/202105_GHG_Wetlands.csv")
-
 # Save clean, averaged spreadsheet
-write.csv(DMV_GHG_med, "202105_GHG_Clean.csv")
+write.csv(samp_clean, "202109_GHG_Clean.csv")  # **CHANGE FOR SAMPLING MONTH**
