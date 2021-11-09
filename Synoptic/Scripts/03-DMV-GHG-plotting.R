@@ -20,7 +20,8 @@ setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva proje
 GHG_2105_complete <- read_csv("2021-05/202105_GHG_Wetlands.csv")
 GHG_2011_complete <- read_csv("2020-11/202011_GHG_Wetlands.csv")
 
-GHG_2105_complete <- read_csv("2021-05/202105_GHG_Wetlands_new.csv")
+# Ordering sites by catchment
+
    
 #### Subsetting the data ####
 
