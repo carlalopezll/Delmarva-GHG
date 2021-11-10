@@ -134,10 +134,11 @@ setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva proje
 GHG <- read.csv("2021-09/202109_GHG_GCHeadspace.csv") # **CHANGE FOR SAMPLING MONTH**
 
 # Add the Site column (two letters), if the spreadsheet doesn't have the Site column
-# GHG$Site <- substr(GHG [ , 7], start= 1, stop= 2) # Make sure that you have the right column for Site_ID
+# GHG$Site <- substr(GHG [ , 13], start= 1, stop= 2) # Make sure that you have the right column for Site_ID
 
 # Add the sample typpe (SW, GW, CH), if the spreadsheet doesn't have sample type
-# GHG$Sample_Type <- substr(GHG [ , 7], start= 4, stop = 6) # Make sure that you have the right column for Site_ID
+# GHG$Sample_Type <- substr(GHG [ , 13], start= 4, stop = 6) # Make sure that you have the right column for Site_ID
+
 
 # Summarize air data for different sites; add column to data file with hsCO2_ppm & hsCH4_ppm (e.g., LabAir, JL Air)
 # Air_Location is the ID that will match up with air-water
@@ -190,16 +191,21 @@ samp$wCH4_umolm3_med <- FwCH4(tempC = samp$WaterT_C, CH4w.uatm = samp$wCH4_uatm_
 samp$wCO2_uM_med <- samp$wCO2_umolm3_med / 1000
 samp$wCH4_uM_med <- samp$wCH4_umolm3_med / 1000
 
+# Changing date column
+
+samp$Sample_Date <- as.POSIXct(strptime(as.character(samp$Sample_Date,"%d/%m/%Y"), format = "%Y%m%d"))
+
 # Save updated dataframe, samp 
 write.csv(samp, "2021-09/202109_GHG_Wetlands.csv")  # **CHANGE FOR SAMPLING MONTH**
 
 #### Final spreadsheet for sharing: Getting averages and removing columns ####
 
 # Select columns of interest, group by site and get averages
-# Need to find a way to include other columns: Site, Sample_Type, Sample_Date
+
 samp_clean <- samp %>%
   group_by(Site_ID) %>%
-  summarize(CO2_uM = median(wCO2_uM_med, na.rm = TRUE), CH4_uM = median(wCH4_uM_med, na.rm = TRUE))
-  
+  summarise(Site = first(Site), Sample_Type = first(Sample_Type), Sample_Date = first(Sample_Date), 
+            CO2_uM = mean(wCO2_uM_med, na.rm = TRUE), CH4_uM = mean(wCH4_uM_med, na.rm = TRUE))
+
 # Save clean, averaged spreadsheet
-write.csv(samp_clean, "202109_GHG_Clean.csv")  # **CHANGE FOR SAMPLING MONTH**
+write.csv(samp_clean, "202109_GHG_Clean_new.csv", row.names = FALSE)  # **CHANGE FOR SAMPLING MONTH**
