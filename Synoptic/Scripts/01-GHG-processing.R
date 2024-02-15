@@ -2,9 +2,8 @@
 # Equations to used to estimate CO2 and CH4 from headspace sampling 
 # Coded/checked/updated by ERH from UQAM/Krycklan files
 # Code updated for Delmarva Project by ERH
-# *** still need to: double-check uatm to umol/m3 conversions
-# *** still need to: fix CH4 calculations
-# Last update: 20211109 by CLL
+# Last update: 20240215 by CLL
+# CH4 calculations are fixed
 ########################################
 
 # Load libraries
@@ -33,26 +32,9 @@ KH.CO2 <- function(tempC){
 # units are mol L-1 atm-1
 KH.CH4 <- function(tempC){
   tempK <- tempC + 273.15
-  KH.CH4  <- exp(-115.6477 + (155.5756/((tempK)/100))+65.2553* log( ((tempK)/100), base=exp(1) ) -6.1698*((tempK)/100))*1000/18.0153
+  KH.CH4  <- (exp(-115.6477 + (155.5756/((tempK)/100))+65.2553* log( ((tempK)/100), base=exp(1) ) -6.1698*((tempK)/100))*1000/18.0153)*1000
   KH.CH4
 }
-
-# Trying a fix after looking at Demarty
-# Demarty reported the correction factor (1000/18.0153) with units mole/L/atm
-# Needed to convert that to mol/L/uatm
-# KH.CH4 <- function(tempC){
-#   tempK <- tempC + 273.15
-#   KH.CH4  <- (exp(-115.6477 + (155.5756/((tempK)/100))+65.2553* log( ((tempK)/100), base=exp(1) ) -6.1698*((tempK)/100)))*(1000/18.0153*1000000)
-#   KH.CH4
-# }
-
-# # From Kelly Aho script
-# 
-# KH.CH4 <- function(tempC){
-#   tempK <- tempC + 273.15
-#   KH.CH4  <- 0.000014*exp(1900*(1/(tempK)-1/298.15))*101325/1000
-#   KH.CH4
-# }
 
 ##### [3] FUNCTION TO ESTIMATE STREAM pCO2 from headspace sample data (what the GC gives you) ####
 # temp inputs are in C
@@ -134,15 +116,32 @@ FwCH4 <- function(tempC, CH4w.uatm){
 # Set working space
 setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva project/Projects/Synoptic/Data")
 
-# Read GCHeadspace with GC data
+# Read GCHeadspace file with GC data
+# CHANGE FOR SAMPLING MONTH
 
-GHG <- read.csv("2022-12/202212_GHG_GCHeadspace.csv") # **CHANGE FOR SAMPLING MONTH**
+date <- "202011" # Change this and no need to change any other date in the script
+
+GHG <- read.csv("GHG data-Raw/2020-11/202011_GHG_GCHeadspace.csv")
+# GHG <- read.csv("GHG data-Raw/2021-02/202102_GHG_GCHeadspace.csv")
+# GHG <- read.csv("GHG data-Raw/2021-05/202105_GHG_GCHeadspace.csv")
+# GHG <- read.csv("GHG data-Raw/2021-06/202106_GHG_GCHeadspace.csv")
+# GHG <- read.csv("GHG data-Raw/2021-09/202109_GHG_GCHeadspace.csv")
+# GHG <- read.csv("GHG data-Raw/2021-10/202110_GHG_GCHeadspace.csv")
+# GHG <- read.csv("GHG data-Raw/2021-11/202111_GHG_GCHeadspace.csv")
+# GHG <- read.csv("GHG data-Raw/2021-12/202112_GHG_GCHeadspace.csv")
+# GHG <- read.csv("GHG data-Raw/2022-02/202202_GHG_GCHeadspace.csv")
+# GHG <- read.csv("GHG data-Raw/2022-03/202203_GHG_GCHeadspace.csv")
+# GHG <- read.csv("GHG data-Raw/2022-05/202205_GHG_GCHeadspace.csv")
+# GHG <- read.csv("GHG data-Raw/2022-06/202206_GHG_GCHeadspace.csv")
+# GHG <- read.csv("GHG data-Raw/2022-07/202207_GHG_GCHeadspace.csv")
+# GHG <- read.csv("GHG data-Raw/2022-10/202210_GHG_GCHeadspace.csv")
+# GHG <- read.csv("GHG data-Raw/2022-12/202212_GHG_GCHeadspace.csv")
 
 # Add the Site column (two letters), if the spreadsheet doesn't have the Site column
-GHG$Site <- substr(GHG [ , 6], start= 1, stop= 2) # Make sure that you have the right column for Site_ID
+# GHG$Site <- substr(GHG [ , 6], start= 1, stop= 2) # Make sure that you have the right column for Site_ID
 
 # Add the sample type (SW, GW, CH), if the spreadsheet doesn't have sample type
-GHG$Sample_Type <- substr(GHG [ , 6], start= 4, stop = 5) # Make sure that you have the right column for Site_ID
+# GHG$Sample_Type <- substr(GHG [ , 6], start= 4, stop = 5) # Make sure that you have the right column for Site_ID
 
 # Add 20ml volume to water and air columns
 GHG$AirV_mL <- 20
@@ -178,8 +177,9 @@ Air_summary <- Air %>%
 # Join the 3 reps with their respective means
 
 
-# Save GHG median to a csv
-write.csv(Air_summary, "2022-12/202212_Air_summary.csv", row.names = FALSE)  # **CHANGE FOR SAMPLING MONTH**
+# Save GHG air concentrations to a csv
+write.csv(Air_summary, paste0(date, "_Air_summary.csv"), row.names = FALSE)
+
 
 # Adding summary air columns to GHG
 GHG_new <- left_join(GHG, Air_summary, by = "Air_Location")
@@ -197,9 +197,8 @@ samp <- GHG_new[ which(GHG_new$Rep!="Air"), ]
 # Check for sites w/o temp
 na_rows <- samp[!complete.cases(samp$WaterT_C), ]
 
-# Either remove those sites or go to script that replaces missing temps
-samp <- samp %>%
-  filter(!Site_ID == "DK-UW1")
+# Either remove those sites without temperature or use script that replaces missing temps
+
 
 # StmCO2fromSamp <- function(tempLab.C, tempSite.C, kPa, gasV, waterV, pCO2.samp, pCO2.hs)
 # This is pCO2 (uatm)
@@ -217,10 +216,9 @@ samp$wCH4_uatm_maxhs <- StmCH4fromSamp(tempLab.C=20, tempSite.C=samp$WaterT_C, k
 # Using NEON equations for now...
 
 #### CONVERT pCO2 and pCH4 from uatm to umol/m3 ** check on these conversions, especially for CH4! ** ####
-# Need to finalize - CLL
 
 samp$wCO2_umolm3_med <- FwCO2(tempC = samp$WaterT_C, CO2w.uatm = samp$wCO2_uatm_medhs)
-samp$wCH4_umolm3_med <- FwCH4(tempC = samp$WaterT_C, CH4w.uatm = samp$wCH4_uatm_medhs) # this needs to be double-checked
+samp$wCH4_umolm3_med <- FwCH4(tempC = samp$WaterT_C, CH4w.uatm = samp$wCH4_uatm_medhs)
 
 #### CONVERT umol/m3 to umol/L
 
@@ -233,12 +231,4 @@ samp$wCO2_mgL_med <- (samp$wCO2_umolm3_med * 44.01)/1000
 samp$wCH4_mgL_med <- (samp$wCH4_umolm3_med * 16.4)/1000
 
 # Save updated dataframe, samp
-write.csv(samp, "2022-12/202212_GHG_Wetlands.csv", row.names = FALSE)  # **CHANGE FOR SAMPLING MONTH**
-
-
-# Select columns of interest, group by site and get averages of 3 reps
-
-samp_clean <- samp %>%
-  group_by(Site_ID) %>%
-  summarise(Site = first(Site), Sample_Type = first(Sample_Type), Sample_Date = first(Sample_Date), 
-            CO2_uM = mean(wCO2_uM_med, na.rm = TRUE), CH4_uM = mean(wCH4_uM_med, na.rm = TRUE))
+write.csv(samp, paste0(date, "_GHG_Wetlands.csv"), row.names = FALSE)
