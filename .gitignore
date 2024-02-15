@@ -1,10 +1,10 @@
 Field notebook/
-Fluxes/
-
 
 .Rhistory
 
 *.csv
+.docx
+.hobo
 .Rproj.user
 
 Synoptic/Data/Digitized Field Notes
