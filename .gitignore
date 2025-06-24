@@ -6,6 +6,7 @@
 *.docx
 *.hobo
 *.Rproj.user
+*.Rproj
 *.pdf
 
 Synoptic/Data
