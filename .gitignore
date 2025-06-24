@@ -9,7 +9,10 @@
 *.Rproj
 *.pdf
 
-Synoptic/Data
+Synoptic/Data/
 Soil core wet-up/
 Stage-area/
-.Rproj.user
+Sensors/Raw Data/
+Synoptic/graphs/
+Synoptic/output/
+
