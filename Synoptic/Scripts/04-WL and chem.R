@@ -1,6 +1,7 @@
 library(dplyr)
 library(ggplot2)
 library(ggpubr)
+library(ggstatsplot)
 
 # Plotting water level and chem
 
@@ -27,13 +28,74 @@ CH4_lab <- expression(paste("C","H"[4]^{}*" ("*mu,"M)"))
 theme <- theme_bw() +
   theme(text = element_text(size = 20), legend.position = "none")
 
+ggplot(SW, aes(x= Temp_C, y = CO2_uM)) +
+  geom_point(size = 3) +
+  geom_smooth(method = lm) +
+  theme
+
+ggscatterstats(SW, CH4_uM, CO2_uM)
+
+ggscatterstats(SW, CH4_uM, CO2_uM)
+
+
+ggplot(SW, aes(x= CH4_uM, y = CO2_uM, color = Site)) +
+  geom_point(size = 3) +
+  geom_smooth(method = lm, se = F) +
+  theme
+
+ggplot(SW, aes(x= Temp_C, y = CH4_uM, color = DO_mgL)) +
+  geom_point(size = 3) +
+  geom_smooth(method = lm) +
+  theme
+
+summary(lm(CO2_uM~Temp_C, SW))
+
+
+
+
+ggplot(SW, aes(x= DO_mgL, y = CO2_uM)) +
+  geom_point(size = 3) +
+  geom_smooth(method = lm, se= F) +
+  scale_y_log10() +
+  theme +
+  labs(x= "Dissolved oxygen (mg/L)", y = CO2_lab) +
+  stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
+           label.x = 6, size = 5, p.accuracy = 0.001)
+
+ggplot(SW, aes(x= DO_mgL, y = CO2_uM)) +
+  geom_point(size = 3) +
+  geom_smooth(method = lm, se= F) +
+  scale_y_log10() +
+  theme +
+  labs(x= "Dissolved oxygen (mg/L)", y = CO2_lab)
+
+summary(lm(CO2_uM~DO_mgL, SW))
+
+ggsave("CO2 vs DO.jpg")
+
+
+
+ggplot(SW, aes(x= DO_mgL, y = CH4_uM)) +
+  geom_point(size = 3) +
+  geom_smooth(method = lm, se= F) +
+  theme +
+  labs(x= "Dissolved oxygen (mg/L)", y = CH4_lab)
+
+summary(lm(CH4_uM~DO_mgL, SW))
+
+ggsave("CH4 vs DO.jpg")
+
+
+
+
+
 # Plot relationships with water level
 
 s1 <- ggplot(SW, aes(x= dly_mean_wtrlvl, y = CO2_uM, color = Sample_Type)) +
   geom_vline(xintercept= 0, size = 1) +
   geom_point(size = 3) +
   geom_smooth(method = lm) +
-  labs(x = "", y = CO2_lab, tag = "b)") +
+  labs(x = "", y = CO2_lab, tag = "a)") +
   theme
 
 summary(lm(CO2_uM~dly_mean_wtrlvl, SW))
@@ -60,7 +122,7 @@ ggplot(wetland_info, aes(area_m2, p_a_ratio)) +
 s2 <- ggplot(SW, aes(x= dly_mean_wtrlvl, y = CH4_uM, color = Sample_Type)) +
   geom_point(size = 3) +
   geom_vline(xintercept= 0, size = 1) +
-  labs(x = "Daily mean water level (m)", y = CH4_lab, tag = "d)") +
+  labs(x = "Daily mean water level (m)", y = CH4_lab, tag = "b)") +
   theme
 
 summary(lm(CH4_uM~dly_mean_wtrlvl, SW))
@@ -72,7 +134,7 @@ ggsave("Graphs/SW CH4 vs daily wl.jpg")
 s <- plot_grid(s1, s2, ncol= 1)
 s
 
-ggsave("Graphs/MS/SW_GHG and wl.jpg")
+ggsave("Graphs/MS/SW_GHG and wl.jpg", dpi = 300, width = 9, height = 7)
 
 g1 <- ggplot(UW, aes(x= dly_mean_wtrlvl, y = CO2_uM)) +
   geom_point(size = 3, color = "#00BFC4") +
