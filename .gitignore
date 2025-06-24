@@ -1,10 +1,11 @@
 .Rhistory
 
 *.csv
+*.xlsx
 *.dat
 *.docx
 *.hobo
-.Rproj.user
+*.Rproj.user
 *.pdf
 
 Synoptic/Data
