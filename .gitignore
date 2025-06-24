@@ -1,8 +1,9 @@
 .Rhistory
 
 *.csv
-.docx
-.hobo
+*.dat
+*.docx
+*.hobo
 .Rproj.user
 *.pdf
 

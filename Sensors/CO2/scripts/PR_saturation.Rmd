@@ -1,0 +1,158 @@
+---
+title: "PR GHG Percent Saturation Calculations"
+author: "Allison Herreid"
+date: "4/7/2020"
+output: html_document
+---
+
+```{r}
+setwd("C:/Users/Allison/Box/PR-GHG")
+library(lubridate)
+library(dplyr)
+```
+
+## Load gas data, convert date/time, round to nearest 15 minute
+To merge with the sensor data which is recorded every 15 mins, round sampling time to the nearest 15 min interval
+```{r}
+gas <- read.csv("200623 Full PR.csv")
+gas$Collection_Date <- mdy(gas$Collection_Date)
+gas$Collection_Time <- hms(gas$Collection_Time)
+gas$DATETIME <- gas$Collection_Date + gas$Collection_Time
+gas$DATETIME <- round_date(gas$DATETIME, '15 mins')
+gas$DATETIME <- as.POSIXct(gas$DATETIME)
+gas$Atm_pressure_kPa <- gas$Atm_Pressure_mb*0.1
+gas$Atm_pressure_kPa <- ifelse(is.na(gas$Atm_pressure_kPa) | gas$Atm_pressure_kPa %in% "A", "1",gas$Atm_pressure_kPa)
+```
+
+## Import sensor data & convert times
+Sites Q3, RI, QS and QP all have sensor pressure data; can match up missing values for these four sites
+```{r}
+Q3_atm <- read.csv("Q3_Barometric sensor data.csv")
+Q3_atm$DATETIME <- as.POSIXct(strptime(Q3_atm$DateTime, "%m/%d/%Y %H:%M", tz="America/Puerto_Rico"))
+RI_atm <- read.csv("RI_Barometric sensor data.csv")
+RI_atm$DATETIME <- as.POSIXct(strptime(RI_atm$DateTime, "%m/%d/%Y %H:%M", tz="America/Puerto_Rico"))
+QS_atm <- read.csv("QS_Barometric sensor data.csv")
+QS_atm$DATETIME <- as.POSIXct(strptime(QS_atm$DateTime, "%m/%d/%Y %H:%M", tz="America/Puerto_Rico"))
+## QP data is very sparce
+QP_atm <- read.csv("QP_Barometric sensor data.csv")
+QP_atm$DATETIME <- as.POSIXct(strptime(QP_atm$DateTime, "%m/%d/%Y %H:%M", tz="America/Puerto_Rico"))
+```
+
+## Sensor merge
+```{r}
+##### Q3 #####
+Q3 <- gas %>% 
+  filter(sample_name == "Q3")
+Q3_gas <- merge(Q3, Q3_atm, by="DATETIME", all.x = TRUE)
+Q3_gas$pressure <- ifelse(Q3_gas$Atm_pressure_kPa == "1",Q3_gas$AbsPres_kPa, Q3_gas$Atm_pressure_kPa)
+##### RI #####
+RI <- gas %>% 
+  filter(sample_name == "RI")
+RI_gas <- merge(RI, RI_atm, by = "DATETIME", all.x = TRUE)
+RI_gas$pressure <- ifelse(RI_gas$Atm_pressure_kPa == "1",RI_gas$AbsPres_kPa, RI_gas$Atm_pressure_kPa)
+##### QS #####
+QS <- gas %>% 
+  filter(sample_name == "QS")
+QS_gas <- merge(QS, QS_atm, by = "DATETIME", all.x = TRUE)
+QS_gas$pressure <- ifelse(QS_gas$Atm_pressure_kPa == "1",QS_gas$AbsPres_kPa, QS_gas$Atm_pressure_kPa)
+
+# Merge
+sensor_gas <- rbind(QS_gas, RI_gas, Q3_gas)
+gas <- merge(x = gas, y = sensor_gas[ , c("UNH_ID", "pressure")], by = "UNH_ID", all.x=TRUE)
+```
+
+## Subset data that still needs pressure to use sensor data to correct by elevation
+```{r}
+gas$pressure <- ifelse(is.na(gas$pressure) | gas$pressure %in% "A", "1",gas$pressure)
+# subset of samples that have pressure
+gas3 <- gas %>% 
+  filter(pressure != "1")
+gas2 <- gas %>% 
+  filter(pressure == "1")
+gas_elev <- merge(gas2, Q3_atm, by="DATETIME", all.x = TRUE)
+sum(is.na(gas_elev$AbsPres_kPa))
+gas_elev$pressure <- NULL
+a <- (2.25577*10^-5)
+b <- 5.25588
+gas_elev$pressure <- gas_elev$AbsPres_kPa*((1-(a*(gas_elev$elevation_m-242)))^b)
+# merge back
+gas_elev$DateTime <- NULL
+gas_elev$AbsPres_kPa <- NULL
+PR_gas <- rbind(gas_elev, gas3)
+PR_gas$pressure <- as.numeric(PR_gas$pressure)
+PR_gas$press_atm <- PR_gas$pressure*0.0098692
+```
+
+## Cacluate equilibrium concentrations
+```{r}
+# Create columns for atmospheric concentrations
+PR_gas$CH4_atm <- 1.8 #ppm
+PR_gas$N2O_atm <- 0.33 #ppm
+PR_gas$CO2_atm <- 407 #ppm
+## CH4 Bunsen solubility coefficient using stream temp (in C)
+PR_gas$CH4_BscL <- (2.7182818^(-67.196+(99.162*(100/(PR_gas$Temperature+273)))+(27.902*log((PR_gas$Temperature+273)/100))))
+## Headspace Correction
+## Assuming a water volume of 30
+PR_gas$CH4_HC <- (PR_gas$CH4_atm/(0.0821*273.15))*(30/1000)
+## Liquid Correction assuming a volume of 30
+PR_gas$CH4_LC <- (((PR_gas$CH4_atm*PR_gas$CH4_BscL*(PR_gas$press_atm)*1)/(0.0821*273.15))*(30/1000))
+## CH4_eq in uM
+PR_gas$CH4_eq <- (PR_gas$CH4_HC+PR_gas$CH4_LC)/(30/1000)
+## CO2 Bunsen solubility coefficient using stream temp (in C)
+PR_gas$CO2_BscL <- (2.7182818^(-58.0931+(90.5069*(100/(PR_gas$Temperature+273)))+(22.294*log((PR_gas$Temperature+273)/100))))*((0.0821*273.15)+((-1636.75+(12.0408*273.15)-(3.27957*0.01*273.15*273.15)+(3.16528*0.00001*273.15*273.15*273.15))/1000))
+
+## Headspace Correction
+## Assuming a water volume of 30
+PR_gas$CO2_HC <- (PR_gas$CO2_atm/(0.0821*273.15))*(30/1000)
+
+## Liquid Correction assuming a volume of 30
+PR_gas$CO2_LC <- (((PR_gas$CO2_atm*PR_gas$CO2_BscL*(PR_gas$press_atm)*1)/(0.0821*273.15))*(30/1000))
+
+## CO2_eq in uM
+PR_gas$CO2_eq <- (PR_gas$CO2_HC+PR_gas$CO2_LC)/(30/1000)
+
+## N2O Bunsen solubility coefficient using stream temp (in C)
+PR_gas$N2O_BscL <- 2.7182818^(-165.8806 + (222.8743* (100/(PR_gas$Temperature+273.15))) + (92.0792*log((PR_gas$Temperature+273.15)/100)) + (-1.48425*((PR_gas$Temperature+273.15)/100)^2))*0.0821*273.15
+
+## Headspace Correction
+## Assuming a water volume of 30
+PR_gas$N2O_HC <- (PR_gas$N2O_atm/(0.0821*273.15))*(30/1000)
+
+## Liquid Correction assuming a volume of 30
+PR_gas$N2O_LC <- (((PR_gas$N2O_atm*PR_gas$N2O_BscL*(PR_gas$press_atm)*1)/(0.0821*273.15))*(30/1000))
+
+## CH4_eq in uM
+PR_gas$N2O_eq <- (PR_gas$N2O_HC+PR_gas$N2O_LC)/(30/1000)
+```
+
+
+## Calculate percent saturation
+saturation = observed concentration / equilibrium concentration
+```{r}
+PR_gas$CH4_sat <- PR_gas$CH4_uM / PR_gas$CH4_eq
+PR_gas$N2O_sat <- PR_gas$N2O_uM / PR_gas$N2O_eq
+PR_gas$CO2_sat <- PR_gas$CO2_uM / PR_gas$CO2_eq
+
+mean(PR_gas$CO2_sat, na.rm = TRUE)
+mean(PR_gas$CH4_sat, na.rm = TRUE)
+mean(PR_gas$N2O_sat, na.rm = TRUE)
+```
+
+```{r}
+PR_gas$CH4_sat_per <- PR_gas$CH4_sat*100
+PR_gas$N2O_sat_per <- PR_gas$N2O_sat*100
+PR_gas$CO2_sat_per <- PR_gas$CO2_sat*100
+
+write.csv(PR_gas, "C:/Users/Allison/Box/PR-GHG/200623_Full_saturation.csv")
+
+
+
+ggplot(data = PR_gas, aes(x = sample_name, y = CO2_sat_per))+geom_boxplot() + theme_bw() + theme(axis.text.x = element_text(angle=60, hjust=1)) + theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))+ geom_hline(aes(yintercept=100), color="black", linetype="dashed", size = 1) + stat_boxplot(geom ='errorbar') + scale_y_continuous(limits = c(0,1600))
+
+ggplot(data = PR_gas, aes(x = sample_name, y = CH4_sat_per))+geom_boxplot() + theme_bw() + theme(axis.text.x = element_text(angle=60, hjust=1)) + theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))+ geom_hline(aes(yintercept=100), color="black", linetype="dashed", size = 1) + stat_boxplot(geom ='errorbar') #+ scale_y_continuous(limits = c(0,1600))
+
+ggplot(data = PR_gas, aes(x = sample_name, y = CH4_sat_per))+geom_boxplot() + theme_bw() + theme(axis.text.x = element_text(angle=60, hjust=1)) + theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))+ geom_hline(aes(yintercept=100), color="black", linetype="dashed", size = 1) + stat_boxplot(geom ='errorbar') + scale_y_log10()#+ scale_y_continuous(limits = c(0,1600))
+
+ggplot(data = PR_gas, aes(x = sample_name, y = N2O_sat_per))+geom_boxplot() + theme_bw() + theme(axis.text.x = element_text(angle=60, hjust=1)) + theme(panel.border = element_blank(), panel.grid.major = element_blank(),panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))+ geom_hline(aes(yintercept=100), color="black", linetype="dashed", size = 1) + stat_boxplot(geom ='errorbar') #+ scale_y_continuous(limits = c(0,1600))
+```
+

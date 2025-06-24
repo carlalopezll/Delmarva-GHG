@@ -1,0 +1,63 @@
+'CR1000 GP Serial Demo
+'Created by Eosense
+
+'Declare Variables and Units
+Public BattV
+Public PTemp_C
+Public SerialInput As String * 100
+Public SerialFields(6) As String * 16
+Public GP_CO2Conc as FLOAT
+Public GP_CO2HiConc as FLOAT
+Public GP_Temp As Float
+
+Units BattV=Volts
+Units PTemp_C=Deg C
+Units GP_CO2Conc=ppm CO2
+Units GP_CO2HiConc=ppm CO2
+Units GP_Temp=Deg C
+
+'Define Data Tables
+DataTable(Table1,True,-1)
+    DataInterval(0,30,Min,10)
+    Sample(1,BattV,FP2)
+    Sample(1,PTemp_C,FP2)
+    Sample(1,GP_CO2Conc,Float)
+    Sample(1,GP_CO2HiConc,Float)
+    Sample(1,GP_Temp,Float)
+EndTable
+
+DataTable(Table2,True,-1)
+    DataInterval(0,1440,Min,10)
+    Minimum(1,BattV,FP2,False,False)
+EndTable
+
+'Main Program
+BeginProg
+    'Initialize Serial Port
+    SerialOpen(Com1,115200,0,0,100)
+    'Main Scan
+    Scan(2,Sec,1,0)
+    'Default Datalogger Battery Voltage measurement 'BattV'
+     Battery(BattV)
+    'Default Wiring Panel Temperature measurement  'PTemp_C'
+     PanelTemp(PTemp_C,_60Hz)
+    'Eosense GP CO2 measurements
+    'Read GP Serial Data
+    SerialIn(SerialInput,Com1,6,&h0D,80)
+    'If new data is available, parse and convert
+    If InStr(1,SerialInput,"][",2) Then
+    'Separate input into fields
+    SplitStr(SerialFields(),SerialInput,"][",6,0)
+    'Store CO2 Concentration as floating point number
+    GP_CO2Conc=SerialFields(2)
+    'Store Temperature as floating point number
+    GP_Temp=SerialFields(3)
+    'Store CO2 High Range Concentration as fpn
+    GP_CO2HiConc=SerialFields(5)
+    EndIf
+    'Call Data Tables and Store Data
+    CallTable Table1
+    CallTable Table2
+ NextScan
+EndProg
+
