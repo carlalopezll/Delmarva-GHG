@@ -9,6 +9,7 @@ library(dplyr)
 
 setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva project/Projects/Synoptic/Data")
 
+inputFile <- samp
 # inputFile <- read.csv("2020-11/202011_GHG_Wetlands.csv")
 # inputFile <- read.csv("2021-02/202102_GHG_Wetlands.csv")
 # inputFile <- read.csv("2021-05/202105_GHG_Wetlands.csv")
@@ -17,13 +18,9 @@ setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva proje
 # inputFile <- read.csv("2021-10/202110_GHG_Wetlands.csv")
 # inputFile <- read.csv("2021-12/202112_GHG_Wetlands.csv")
 # inputFile <- read.csv("2022-03/202203_GHG_Wetlands.csv")
-inputFile <- read.csv("2021-11/202111_GHG_Wetlands.csv")
-inputFile <- samp
+# inputFile <- read.csv("2021-11/202111_GHG_Wetlands.csv")
 
-# # For sensors
-# 
-# setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva project/Projects/Sensors")
-# 
+# Standard pressure and lab temperature
 
 inputFile$baro <- 102
 inputFile$headspaceTemp.C <- 20
@@ -110,30 +107,13 @@ gases$dCH4.umol <- gases$dissolvedCH4 * 1000000
 ggplot(gases, aes(x= dCH4.umol, y = wCH4_uM_med)) +
   geom_point()
 
-
-# ggsave("2021-10/20210_CH4 comparison.jpg")
-
 ggplot(gases, aes(x= dCO2.umol, y = wCO2_uM_med)) +
   geom_point()
-
-# ggsave("2021-10/202110_CO2 comparison.jpg")
 
 # mg/L
 # pvy20_neon$dCO2.mgl <- pvy20_neon$dissolvedCO2 * 44.01 * 1000
 # check if output makes sense
 
-# write new csv so you don't have to do this again
+# Write csv
 
-# write.csv(gases, "2021-11/202111_GHG_NEON.csv")   # **CHANGE FOR SAMPLING MONTH**
-
-# Clean up
-
-gases_clean <- gases %>%
-  filter(!Rep == "Air") %>%
-  group_by(Site_ID) %>%
-  summarise(Site = first(Site), Sample_Type = first(Sample_Type), Sample_Date = first(Sample_Date), 
-            CO2_uM = mean(dCO2.umol, na.rm = TRUE), CH4_uM = mean(dCH4.umol, na.rm = TRUE))
-
-# Save clean, averaged spreadsheet
-
-# write.csv(gases_clean, "2021-11/202111_GHG_NEON_clean.csv", row.names = FALSE)  # **CHANGE FOR SAMPLING MONTH**
+write.csv(gases, paste0(date, "_GHG_NEON.csv"), row.names=FALSE)

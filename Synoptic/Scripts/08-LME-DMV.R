@@ -1,7 +1,7 @@
 # Linear mixed effects model analysis
 # Carla Lopez Lloreda
 # For Delmarva synoptic data
-# Last updated 10/28/2022
+# Last updated 8/22/2024
 
 library(lme4)
 library(dplyr)
@@ -15,18 +15,14 @@ library(lmerTest)
 library(performance) # for collinearity checks
 library(nlme)
 library(lubridate)
-
-citation("lme4")
-citation("nlme")
+library(modelsummary)
 
 setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva project/Projects/Synoptic/Data")
 
 # Read in data
-merge <- read.csv("Master spreadsheet.csv")
+merge <- read_csv("Master spreadsheet.csv")
 
-merge$Date_corrected <- as.Date(parse_date_time(merge$Date_corrected, c("mdy", "ymd")))
-
-# SW <- wl_chem
+# Filter out surface water
 
 SW <- filter(merge, Sample_Type == "SW")
 SW <- filter(SW, Site_dry == "No")
@@ -36,14 +32,6 @@ theme <- theme_bw() + theme(axis.text = element_text(size = "14"), axis.title = 
 
 # Check distribution of problematic variables and test for normality
 # Then log-transform if needed
-
-shapiro.test(SW$CO2_uM)
-
-# Select columns to test
-columns_to_test <- SW[, 7:8]
-columns_to_test <- SW[, 15:19]
-columns_to_test <- SW[, 30:50]
-
 
 # Apply Shapiro-Wilk test to each column
 shapiro_results <- lapply(columns_to_test, shapiro.test)
@@ -67,6 +55,9 @@ SW$Cl_log <- log(SW$Cl)
 
 SW$CO2_log <- log10(SW$CO2_uM)
 SW$CH4_log <- log10(SW$CH4_uM)
+
+
+SW$Temp_C <- as.numeric(SW$Temp_C)
 
 
 # Mixed effects model
@@ -116,7 +107,7 @@ step(fm1_CO2, direction = "both")
 # This includes and accomodates temporal autocorrelation
 
 corr_resCO2_1 <- lme(
-  CO2_uM ~ pH + DO_mgL + DO_percent + CH4_uM + SpC + Temp_C + NPOC + d18O + d2H + TDN + TDP_log + SO4_log + NO3 + NH3 + X54Fe + X55Mn + dly_mean_wtrlvl, method = "REML", 
+  CO2_uM ~ pH + DO_mgL + DO_percent + CH4_uM + SpC + Temp_C + NPOC + d18O + d2H + TDN + TDP_log + SO4_log + NO3 + NH3, method = "REML", 
   data = SW,
   random = ~ 1 | Site,
   correlation = corCAR1(form = ~ Date_corrected),
@@ -124,18 +115,20 @@ corr_resCO2_1 <- lme(
 )
 
 summary(corr_resCO2_1)
-anova(corr_resCO2_1)
 
 # Evaluating multicollinearity in the model
 check_collinearity(corr_resCO2_1)
 plot(check_collinearity(corr_resCO2_1))
 
+check_model(corr_resCO2_1)
+model_performance(corr_resCO2_1)
+
 # Removed because of high collinearity
 # How do you decide which of the variables to include?
-# DO_percent, d18O, TDN
+# Removed DO_percent, d18O, TDN
 
 corr_resCO2_2 <- lme(
-  CO2_uM ~ pH + DO_mgL + CH4_uM + SpC + Temp_C + NPOC + d18O + d2H + TDP_log + SO4_log + NO3 + NH3 + X54Fe + X55Mn + dly_mean_wtrlvl, method = "REML", 
+  CO2_uM ~ pH + DO_mgL + CH4_uM + SpC + Temp_C + NPOC + d2H + TDP_log + SO4_log + NO3 + NH3 + "54Fe" + "55Mn" + dly_mean_wtrlvl, method = "REML", 
   data = SW,
   random = ~ 1 | Site,
   correlation = corCAR1(form = ~ Date_corrected),
@@ -143,7 +136,7 @@ corr_resCO2_2 <- lme(
 )
 
 summary(corr_resCO2_2)
-anova(corr_resCO2_2)
+plot(multicollinearity(corr_resCO2_2))
 
 # Remove non-significant variables
 
@@ -155,10 +148,19 @@ corr_resCO2_3 <- lme(
   na.action=na.exclude
 )
 
+
+ggplot(SW, aes(x= DO_mgL, y= CO2_uM)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+summary(lm(CO2_uM~DO_mgL, data= SW))
+
 summary(corr_resCO2_3)
 anova(corr_resCO2_3)
 check_model(corr_resCO2_3)
 model_performance(corr_resCO2_3)
+
+modelsummary(corr_resCO2_3, "tinytable")
 
 
 # Plot predicted vs actual values: CO2
@@ -198,10 +200,12 @@ ggplot(predict_CO2, aes(x= `predict(corr_resCO2_3)`, y = residual)) +
 
 ggsave("Graphs/CO2 residuals.jpg")
 
+SW$CH4_log <- log10(SW$CH4_uM)
+
 # CH4 models with temporal autocorrelation
 
 corr_resCH4_1 <- lme(
-  CH4_uM ~ pH + DO_mgL + DO_percent + CO2_uM + SpC + Temp_C + NPOC + d18O + d2H + TDN + TDP_log + SO4_log + NO3 + NH3 + X54Fe + X55Mn + dly_mean_wtrlvl, method = "REML", 
+  CH4_log ~ pH + DO_mgL + DO_percent + CO2_uM + SpC + Temp_C + NPOC + d18O + d2H + TDN + TDP_log + SO4_log + NO3 + NH3 + dly_mean_wtrlvl, method = "REML", 
   data = SW,
   random = ~ 1 | Site,
   correlation = corCAR1(form = ~ Date_corrected),
@@ -215,17 +219,18 @@ plot(check_collinearity(corr_resCH4_1))
 summary(corr_resCH4_1)
 anova(corr_resCH4_1)
 
-
+# Remove highly correlated variables: DO_perc, d18O, and TDN
 corr_resCH4_2 <- lme(
-  CH4_uM ~ pH + DO_mgL + CO2_uM + SpC + Temp_C + NPOC + d18O + d2H + TDP_log + SO4_log + NO3 + NH3 + X54Fe + X55Mn + dly_mean_wtrlvl, method = "REML", 
+  CH4_log ~ pH + DO_mgL + CO2_uM + SpC + Temp_C + NPOC + d18O + TDP_log + SO4_log + NO3 + NH3 + dly_mean_wtrlvl, method = "REML", 
   data = SW,
   random = ~ 1 | Site,
   correlation = corCAR1(form = ~ Date_corrected),
   na.action=na.exclude
 )
 
+multicollinearity(corr_resCH4_2)
+plot(multicollinearity(corr_resCH4_2))
 summary(corr_resCH4_2)
-anova(corr_resCH4_2)
 
 
 corr_resCH4_3 <- lme(
@@ -238,6 +243,57 @@ corr_resCH4_3 <- lme(
 
 summary(corr_resCH4_3)
 anova(corr_resCH4_3)
+
+step(corr_resCH4_3)
+
+# Evaluating multicollinearity in the model
+plot(check_collinearity(corr_resCH4_3))
+
+# Look at model performance
+check_model(corr_resCH4_3)
+
+modelsummary(corr_resCH4_3, "tinytable")
+
+
+#### FINAL CH4 MODEL ####
+
+corr_resCH4_4 <- lme(
+  CH4_uM ~ DO_mgL + pH + CO2_uM + NPOC + NH3, method = "REML", 
+  data = SW,
+  random = ~ 1 | Site,
+  correlation = corCAR1(form = ~ Date_corrected),
+  na.action=na.exclude
+)
+
+summary(corr_resCH4_4)
+multicollinearity(corr_resCH4_4)
+
+
+#### Testing different models for revisions: DO vs CO2 ####
+
+corr_resCH4_CO2 <- lme(
+  CH4_uM ~ pH + CO2_uM + NPOC + NH3, method = "REML", 
+  data = SW,
+  random = ~ 1 | Site,
+  correlation = corCAR1(form = ~ Date_corrected),
+  na.action=na.exclude
+)
+
+corr_resCH4_DO <- lme(
+  CH4_uM ~ pH + DO_mgL + NPOC + NH3, method = "REML", 
+  data = SW,
+  random = ~ 1 | Site,
+  correlation = corCAR1(form = ~ Date_corrected),
+  na.action=na.exclude
+)
+
+anova(corr_resCH4_CO2, corr_resCH4_DO)
+summary(corr_resCH4_CO2)
+summary(corr_resCH4_DO)
+
+
+ggplot(SW, aes(x= DO_mgL, y= CH4_uM)) +
+  geom_point()
 
 # Checking model performance
 

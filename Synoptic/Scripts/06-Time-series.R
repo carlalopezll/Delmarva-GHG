@@ -16,11 +16,12 @@ library(gridExtra)
 library(ggpubr)
 library(cowplot)
 
+# setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva project/Projects/Water level")
+# 
+# precip <- read.csv("Jackson Lane precip.csv")
+# precip$Date_corrected <- as.Date(precip$timestamp)
+
 setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva project/Projects/Synoptic/Data")
-
-precip <- read.csv("Jackson Lane precip.csv")
-precip$Date_corrected <- as.Date(precip$timestamp)
-
 
 # Read in merged
 merge <- read.csv("Master spreadsheet.csv")
@@ -42,7 +43,7 @@ merge$Site <- factor(merge$Site,levels = c("ND", "BD", "TS", "DK", "FR", # Jacks
 SW <- merge %>%
   filter(Sample_Type == "SW") %>%
   filter(Site_dry == "No") %>%
-  filter(!(Site == "AG") & !(Site == "TR"))
+  filter(!(Site == "AG") & !(Site == "TR") & !(Site == "CR"))
 
 GW <- filter(merge, Sample_Type == "UW")
 
@@ -53,6 +54,9 @@ CH4_lab <- expression(paste("C","H"[4]^{}*" ("*mu,"M)"))
 # Theme stuff
 theme <- theme_bw() +
   theme(text = element_text(size = 20), legend.position = "none")
+
+
+summary(SW$DO_mgL)
 
 #### Plotting timeseries ####
 
@@ -119,9 +123,69 @@ ggplot(precip, aes(x= Date_corrected, y = precip_mm)) +
   theme(legend.position = "none") +
   scale_x_date(labels = date_format("%Y-%m"), date_breaks = "3 months", date_minor_breaks = "3 month")
 
+
+
+# Time-series graphs w/ geom_ribbon
+
+CO2_avg <- SW %>%
+  group_by(yymm_new = yymm_new) %>%
+  summarise(Mean = mean(CO2_uM), 
+            Sd = sd(CO2_uM),
+            Date_corrected = first(Date_corrected))
+
+
+t1 <- ggplot(CO2_avg, aes(x = Date_corrected, y = Mean)) +
+  geom_point(size = 5) +
+  geom_ribbon(aes(ymin = Mean - Sd, ymax = Mean + Sd), alpha = 0.3, fill = "blue") +
+  labs(x = "", y = CO2_lab, tag = "b)") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_x_date(labels = date_format("%Y-%m"), date_breaks = "3 months", date_minor_breaks = "3 month") +
+   theme
+
+t1
+
+
+CH4_avg <- SW %>%
+  group_by(yymm_new = yymm_new) %>%
+  summarise(Mean = mean(CH4_uM), 
+            Sd = sd(CH4_uM),
+            Date_corrected = first(Date_corrected))
+
+
+t2 <- ggplot(CH4_avg, aes(x = Date_corrected, y = Mean)) +
+  geom_point(size = 5) +
+  geom_ribbon(aes(ymin = Mean - Sd, ymax = Mean + Sd), alpha = 0.3, fill = "blue") +
+  labs(x = "", y = CH4_lab, tag = "c)") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_x_date(labels = date_format("%Y-%m"), date_breaks = "3 months", date_minor_breaks = "3 month") +
+  theme
+
+t2
+
+do_avg <- SW %>%
+  group_by(yymm_new = yymm_new) %>%
+  summarise(Mean = mean(DO_mgL),
+            Sd = sd(DO_mgL),
+            Date_corrected = first(Date_corrected))
+
+t3 <- ggplot(do_avg, aes(x = Date_corrected, y = Mean)) +
+  geom_point(size = 5) +
+  geom_ribbon(aes(ymin = Mean - Sd, ymax = Mean + Sd), alpha = 0.3, fill = "blue") +
+  labs(x = "", y = "DO concentrations (mg/L)", tag = "c)") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_x_date(labels = date_format("%Y-%m"), date_breaks = "3 months", date_minor_breaks = "3 month") +
+  theme
+
+t3
+
+# Time-series graphs w/ LOESS lines
+
 t1 <- ggplot(SW, aes(x= Date_corrected, y = CO2_uM)) +
   geom_point(size = 3) +
-  labs(x = "", y = CO2_lab, tag = "b)") +
+  labs(x = "", y = CO2_lab, tag = "c)") +
   theme_bw() +
   theme +
   theme(legend.position = "none") +
@@ -129,20 +193,36 @@ t1 <- ggplot(SW, aes(x= Date_corrected, y = CO2_uM)) +
   scale_x_date(labels = date_format("%Y-%m"), date_breaks = "3 months", date_minor_breaks = "3 month")
 
 t1
+ggplotly(t1)
 
 t2 <- ggplot(SW, aes(x= Date_corrected, y = CH4_uM)) +
   geom_point(size = 3) +
-  labs(x = "", y = CH4_lab, tag = "c)") +
+  labs(x = "", y = CH4_lab, tag = "d)") +
   theme_bw() +
   theme +
   theme(legend.position = "none") +
   geom_smooth(method = "loess") +
   scale_x_date(labels = date_format("%Y-%m"), date_breaks = "3 months", date_minor_breaks = "3 month")
 
-t <- plot_grid(wl_graph, t1, t2, ncol = 1, align = "v", rel_heights = c(1, 1, 1))
+t2
+
+ggplotly(t2)
+
+t3 <- ggplot(SW, aes(x= Date_corrected, y = DO_mgL)) +
+  geom_point(size = 3) +
+  labs(x = "", y = "DO (mg/L)", tag = "b)") +
+  theme_bw() +
+  theme +
+  theme(legend.position = "none") +
+  geom_smooth(method = "loess") +
+  scale_x_date(labels= date_format("%Y-%m"), date_breaks = "3 months", date_minor_breaks = "3 month")
+
+ggplotly(t3)
+
+t <- plot_grid(wl_graph, t3, t1, t2, ncol = 1, align = "v", rel_heights = c(1, 1, 1))
 t
 
-ggsave("Graphs/MS/time series.jpg", t, width = 14, height = 10)
+ggsave("Graphs/MS/time series 3.jpg", t, width = 14, height = 10, dpi = 300)
 
 ggplot(SW, aes(x= Date_corrected, y = CH4_CO2)) +
   geom_point(size=3) +
@@ -152,28 +232,8 @@ ggplot(SW, aes(x= Date_corrected, y = CH4_CO2)) +
   theme(legend.position = "none") +
   scale_x_date(labels = date_format("%Y-%m"), date_breaks = "3 months", date_minor_breaks = "1 month", expand = c(0,0))
 
-ggsave("Graphs/CH4_CO2 timeseries.jpg", width = 28, height = 8, units = "in", dpi = 300)
-
-
-DO <- ggplot(SW, aes(x= Date_corrected, y = DO_mgL)) +
-  geom_point(size = 3) +
-  labs(x = "", y = "DO (mg/L)", tag = "a)") +
-  theme_bw() +
-  theme +
-  theme(legend.position = "none") +
-  geom_smooth(method = "loess") +
-  scale_x_date(labels= date_format("%Y-%m"), date_breaks = "3 months", date_minor_breaks = "3 month")
-
-DO
-
-ggsave("DO timeseries.jpg")
-
-do_avg <- SW %>%
-  group_by(yymm_new = yymm_new) %>%
-  summarise(Mean = mean(DO_mgL), 
-            Min = min(DO_mgL),
-            Max = max(DO_mgL),
-            Date_corrected = first(Date_corrected))
+ggsave("Graphs/CO2_avg <- SW %>%
+  group_by(yymm_new = yymm_new) %>% timeseries.jpg", width = 28, height = 8, units = "in", dpi = 300)
 
 
 CH4_CO2 <- ggplot(SW, aes(x= Date_corrected, y = CH4_CO2)) +
@@ -186,6 +246,17 @@ CH4_CO2 <- ggplot(SW, aes(x= Date_corrected, y = CH4_CO2)) +
   scale_x_date(labels = date_format("%Y-%m"), date_breaks = "3 months", date_minor_breaks = "3 month")
 
 CH4_CO2
+
+Temp_C <- ggplot(SW, aes(x= Date_corrected, y = Temp_C)) +
+  geom_point(size = 3) +
+  labs(x = "Date", y = "Temperature (C)", tag = "b)") +
+  theme_bw() +
+  theme +
+  theme(legend.position = "none") +
+  geom_smooth(method = "loess") +
+  scale_x_date(labels = date_format("%Y-%m"), date_breaks = "3 months", date_minor_breaks = "3 month")
+
+Temp_C
 
 
 redox_avg <- SW %>%

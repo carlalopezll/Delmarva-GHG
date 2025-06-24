@@ -90,7 +90,6 @@ StmCH4fromSamp <- function(tempLab.C, tempSite.C, kPa, gasV, waterV, pCH4.samp, 
 
 
 ##### [6] FUNCTION TO CONVERT pCH4 from uatm to umol/m3 ####
-# **** Need to check updated code specific to CH4 (not CO2) ****
 # 1 m3 = 1000 L; convert umol/m3 to umol/L = Fw/1000
 FwCH4 <- function(tempC, CH4w.uatm){
   # Parameters and units:
@@ -114,34 +113,11 @@ FwCH4 <- function(tempC, CH4w.uatm){
 # LOAD files from (1) GC output, (2) lab notes with headspace volumes, and (3) any different site IDs
 
 # Set working space
-setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva project/Projects/Synoptic/Data")
+setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva project/Projects/Fluxes")
 
 # Read GCHeadspace file with GC data
-# CHANGE FOR SAMPLING MONTH
 
-date <- "202011" # Change this and no need to change any other date in the script
-
-GHG <- read.csv("GHG data-Raw/2020-11/202011_GHG_GCHeadspace.csv")
-# GHG <- read.csv("GHG data-Raw/2021-02/202102_GHG_GCHeadspace.csv")
-# GHG <- read.csv("GHG data-Raw/2021-05/202105_GHG_GCHeadspace.csv")
-# GHG <- read.csv("GHG data-Raw/2021-06/202106_GHG_GCHeadspace.csv")
-# GHG <- read.csv("GHG data-Raw/2021-09/202109_GHG_GCHeadspace.csv")
-# GHG <- read.csv("GHG data-Raw/2021-10/202110_GHG_GCHeadspace.csv")
-# GHG <- read.csv("GHG data-Raw/2021-11/202111_GHG_GCHeadspace.csv")
-# GHG <- read.csv("GHG data-Raw/2021-12/202112_GHG_GCHeadspace.csv")
-# GHG <- read.csv("GHG data-Raw/2022-02/202202_GHG_GCHeadspace.csv")
-# GHG <- read.csv("GHG data-Raw/2022-03/202203_GHG_GCHeadspace.csv")
-# GHG <- read.csv("GHG data-Raw/2022-05/202205_GHG_GCHeadspace.csv")
-# GHG <- read.csv("GHG data-Raw/2022-06/202206_GHG_GCHeadspace.csv")
-# GHG <- read.csv("GHG data-Raw/2022-07/202207_GHG_GCHeadspace.csv")
-# GHG <- read.csv("GHG data-Raw/2022-10/202210_GHG_GCHeadspace.csv")
-# GHG <- read.csv("GHG data-Raw/2022-12/202212_GHG_GCHeadspace.csv")
-
-# Add the Site column (two letters), if the spreadsheet doesn't have the Site column
-# GHG$Site <- substr(GHG [ , 6], start= 1, stop= 2) # Make sure that you have the right column for Site_ID
-
-# Add the sample type (SW, GW, CH), if the spreadsheet doesn't have sample type
-# GHG$Sample_Type <- substr(GHG [ , 6], start= 4, stop = 5) # Make sure that you have the right column for Site_ID
+GHG <- read.csv("DMV k calculations.csv")
 
 # Add 20ml volume to water and air columns
 GHG$AirV_mL <- 20
@@ -174,12 +150,8 @@ Air_summary <- Air %>%
    AirCO2_max_ppm = max(CO2_ppm, na.rm = TRUE), AirCH4_min_ppm = min(CH4_ppm, na.rm = TRUE),
    AirCH4_med_ppm = median(CH4_ppm, na.rm = TRUE), AirCH4_max_ppm = max(CH4_ppm, na.rm = TRUE))
 
-# Join the 3 reps with their respective means
-
-
 # Save GHG air concentrations to a csv
 write.csv(Air_summary, paste0(date, "_Air_summary.csv"), row.names = FALSE)
-
 
 # Adding summary air columns to GHG
 GHG_new <- left_join(GHG, Air_summary, by = "Air_Location")
@@ -192,7 +164,7 @@ GHG_new <- left_join(GHG, Air_summary, by = "Air_Location")
 # NOTE: lab temp and pressure are fixed for now, 20C and 102kPa
 
 # subset the data to exclude air samples
-samp <- GHG_new[ which(GHG_new$Rep!="Air"), ]
+samp <- GHG
 
 # Check for sites w/o temp
 na_rows <- samp[!complete.cases(samp$WaterT_C), ]
@@ -202,23 +174,20 @@ na_rows <- samp[!complete.cases(samp$WaterT_C), ]
 
 # StmCO2fromSamp <- function(tempLab.C, tempSite.C, kPa, gasV, waterV, pCO2.samp, pCO2.hs)
 # This is pCO2 (uatm)
-samp$wCO2_uatm_medhs <- StmCO2fromSamp(tempLab.C=20, tempSite.C=samp$WaterT_C, kPa=102, gasV=samp$AirV_mL, waterV=samp$WaterV_mL, pCO2.samp=samp$CO2_ppm, pCO2.hs=samp$AirCO2_med_ppm)
+samp$wCO2_uatm_medhs <- StmCO2fromSamp(tempLab.C=20, tempSite.C=17, kPa=102, gasV=samp$AirV_mL, waterV=samp$WaterV_mL, pCO2.samp=samp$CO2_water_ppm, pCO2.hs=samp$CO2_atm_ppm)
 samp$wCO2_uatm_minhs <- StmCO2fromSamp(tempLab.C=20, tempSite.C=samp$WaterT_C, kPa=102, gasV=samp$AirV_mL, waterV=samp$WaterV_mL, pCO2.samp=samp$CO2_ppm, pCO2.hs=samp$AirCO2_min_ppm)
 samp$wCO2_uatm_maxhs <- StmCO2fromSamp(tempLab.C=20, tempSite.C=samp$WaterT_C, kPa=102, gasV=samp$AirV_mL, waterV=samp$WaterV_mL, pCO2.samp=samp$CO2_ppm, pCO2.hs=samp$AirCO2_max_ppm)
 
 # StmCH4fromSamp <- function(tempLab.C, tempSite.C, kPa, gasV, waterV, pCH4.samp, pCH4.hs)
 # This is pCH4 (uatm)
-samp$wCH4_uatm_medhs <- StmCH4fromSamp(tempLab.C=20, tempSite.C=samp$WaterT_C, kPa=102, gasV=samp$AirV_mL, waterV=samp$WaterV_mL, pCH4.samp=samp$CH4_ppm, pCH4.hs=samp$AirCH4_med_ppm)
+samp$wCH4_uatm_medhs <- StmCH4fromSamp(tempLab.C=20, tempSite.C=17, kPa=102, gasV=samp$AirV_mL, waterV=samp$WaterV_mL, pCH4.samp=samp$CH4_water_ppm, pCH4.hs=1.8)
 samp$wCH4_uatm_minhs <- StmCH4fromSamp(tempLab.C=20, tempSite.C=samp$WaterT_C, kPa=102, gasV=samp$AirV_mL, waterV=samp$WaterV_mL, pCH4.samp=samp$CH4_ppm, pCH4.hs=samp$AirCH4_min_ppm)
 samp$wCH4_uatm_maxhs <- StmCH4fromSamp(tempLab.C=20, tempSite.C=samp$WaterT_C, kPa=102, gasV=samp$AirV_mL, waterV=samp$WaterV_mL, pCH4.samp=samp$CH4_ppm, pCH4.hs=samp$AirCH4_max_ppm)
-# VALUES ARE WAYYY TOO HIGH - need to revisit...done for now /E *****************************
-# I haven't been able to figure it out - CLL 12/2022
-# Using NEON equations for now...
 
-#### CONVERT pCO2 and pCH4 from uatm to umol/m3 ** check on these conversions, especially for CH4! ** ####
+#### CONVERT pCO2 and pCH4 from uatm to umol/m3
 
-samp$wCO2_umolm3_med <- FwCO2(tempC = samp$WaterT_C, CO2w.uatm = samp$wCO2_uatm_medhs)
-samp$wCH4_umolm3_med <- FwCH4(tempC = samp$WaterT_C, CH4w.uatm = samp$wCH4_uatm_medhs)
+samp$wCO2_umolm3_med <- FwCO2(tempC = 17, CO2w.uatm = samp$wCO2_uatm_medhs)
+samp$wCH4_umolm3_med <- FwCH4(tempC = 17, CH4w.uatm = samp$wCH4_uatm_medhs)
 
 #### CONVERT umol/m3 to umol/L
 
@@ -231,4 +200,4 @@ samp$wCO2_mgL_med <- (samp$wCO2_umolm3_med * 44.01)/1000
 samp$wCH4_mgL_med <- (samp$wCH4_umolm3_med * 16.4)/1000
 
 # Save updated dataframe, samp
-write.csv(samp, paste0(date, "_GHG_Wetlands.csv"), row.names = FALSE)
+write.csv(samp, "GHG for k.csv", row.names = FALSE)

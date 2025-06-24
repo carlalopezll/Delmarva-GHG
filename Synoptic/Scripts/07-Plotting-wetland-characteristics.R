@@ -16,11 +16,11 @@ library(cowplot)
 
 setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva project/Projects/Synoptic/Data")
 
-wetland_info <- read.csv("Master spreadsheet.csv")
+wetland_info <- read_csv("Master spreadsheet.csv")
 
 #### CVs with wetland metrics ####
 
-CV_site <- read.csv("Site CV.csv") # sheet with calculated CVs
+CV_site <- read_csv("Site CV_240801.csv") # sheet with calculated CVs
 
 
 # Join CVs and wetland info by site ID
@@ -29,7 +29,7 @@ join <- inner_join(CV_site, wetland_info, by = c("Site_ID" = "Site_ID", "Sample_
 # Save as csv
 # These csv has wetland metrics + CO2 and CH4 stats
 
-write.csv(join, "Wetland characteristics.csv", row.names = FALSE)
+write_csv(join, "Wetland characteristics.csv")
 
 ######################################################
 
@@ -61,7 +61,6 @@ CH4_CV_lab <- expression(paste("C","H"[4]^{}*" CV (%)"))
 
 # Area
 wetland_area_lab <- bquote("Wetland area" ~(m^2))
-wetland_area_lab_log <- expression(paste("log(Wetland area" ~(m^2),")"))
 
 #### Looking at wetland characteristics ####
 
@@ -71,7 +70,8 @@ ggplot(SW, aes(x = area_m2, y = wetland_storage_volume_m3)) +
   scale_x_log10() +
   geom_smooth(method = "lm") +
   geom_label(aes(label=Site)) +
-  labs(x = "Area (m^2)", y = "Wetland storage volume (m^3)")
+  labs(x = "Area (m^2)", y = "Wetland storage volume (m^3)") +
+  theme
 
 ggplot(wetland_info, aes(x = area_m2, y = wetland_storage_volume_m3)) +
   geom_point() +
@@ -121,7 +121,7 @@ ggsave("Graphs/order vs area.jpg")
 
 ggplot(wetland_info, aes(x = area_m2, y = mean_gap_frac)) +
   geom_point() +
-  geom_label(aes(label=Site_ID)) +
+  geom_label(aes(label=Site)) +
   labs(x = "log-Area (m^2)", y = "Mean gap fraction") +
   scale_x_log10() +
   theme 
@@ -161,7 +161,7 @@ ggsave("Graphs/WL histogram.jpg")
 
 p3 <- ggplot(SW, aes(x = area_m2, y = wl_mean)) +
   geom_point(size = 4) +
-  labs(x = wetland_area_lab_log, y = "Water level mean (m)", tag = "c)") +
+  labs(x = wetland_area_lab, y = "Water level mean (m)", tag = "c)") +
   theme +
   scale_color_brewer(palette = "Dark2", name = "Dominant vegetation") +
   scale_x_log10() +
@@ -186,29 +186,29 @@ ggsave("Graphs/MS/Figure 2_new.jpg", p)
 # Depends on how you look at it
 # Forested wetlands (excluding DF, TI, FN) and with the exception of OB, YES
 
-ggplot(SW, aes(x = area_m2, y = CV_wl)) +
-  geom_point() +
+a1 <- ggplot(SW, aes(x = area_m2, y = CV_wl)) +
+  geom_point(size = 3) +
+  labs(x = wetland_area_lab, y = "CV of water level (%)") +
+  theme
+
+a1
+
+a2 <- ggplot(SW, aes(x = area_m2, y = CV_wl)) +
+  geom_point(size = 3) +
   geom_smooth(method = "lm") +
-  geom_label(aes(label=Site)) +
-  ylim(NA,100) +  xlim(NA, 2700) +
-  labs(x = "Area (m^2)", y = "CV of water level (%)") +
+  xlim(NA, 2000) +
+  labs(x = wetland_area_lab, y = "CV of water level (%)") +
   theme
 
-ggsave("Graphs/WL CV vs area_subset.jpg")
+a2
 
-ggplot(SW, aes(x = area_m2, y = CV_wl)) +
-  geom_point() +
-  geom_label(aes(label=Site)) +
-  labs(x = "Area (m^2)", y = "CV of water level (%)") +
-  theme
+a <- grid.arrange(a1, a2, ncol = 1)
 
-summary(lm(area_m2~CV_wl, SW))
+ggsave("Graphs/MS/WL CV vs area.jpg", a, width = 12, height = 8, dpi = 300)
 
-ggsave("Graphs/WL CV vs area_no subset.jpg")
 
 # Plotting GHG CVs against water level CV
 # Are more hydrologically variable wetlands more variable for GHG?
-# ALMOST FOR CO2
 
 ggplot(SW, aes(x = CV_wl, y = CV_CO2, color = area_m2)) +
   geom_point() +
@@ -237,13 +237,12 @@ ggsave("Graphs/MS/CV CO2 vs CV WL.jpg")
 
 # YES FOR CH4
 
-ggplot(CV_SW, aes(x = CV_wl, y = CV_CH4, color = area_m2)) +
+ggplot(SW, aes(x = CV_wl, y = CV_CH4, color = area_m2)) +
   geom_point() +
   scale_x_log10() +
   geom_smooth(method = "lm") +
   geom_label(aes(label=Site)) +
-  scale_color_gradientn(colors=met.brewer("Hokusai1")) +
-  labs(x = "CV of water level (%)", y = "CV of CO2 (%)") +
+  labs(x = "CV of water level (%)", y = "CV of CH4 (%)") +
   theme +
   stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
            size = 5)
@@ -337,16 +336,23 @@ a1
 ggsave("Graphs/CO2 conc vs area.jpg")
 
 
-a2 <- ggplot(CV_SW, aes(x = area_m2, y = CH4_mean)) +
+a2 <- ggplot(SW, aes(x = area_m2, y = CH4_mean)) +
   geom_point(size= 3) +
   geom_smooth(method = "lm") +
   labs(x = bquote("Wetland area" ~(m^2)), y = CH4_lab, tag = "d)") +
   scale_x_log10() +
   theme
 
+summary(lm(CH4_mean ~ area_m2, SW))
+
 a2
 
-summary(lm(CH4_mean ~ area_m2, data = SW))
+model <- summary(lm(CH4_mean ~ area_m2, SW))
+p_values <- coef(model)[, "Pr(>|t|)"]
+p_values
+
+adjusted_p_values <- p.adjust(p_values, method = "bonferroni")
+adjusted_p_values
 
 ggsave("Graphs/CH4 conc vs area.jpg")
 
@@ -367,7 +373,13 @@ p1 <- ggplot(SW, aes(x = p_a_ratio, y = CO2_mean)) +
 
 p1
 
-summary(lm(CO2_mean~p_a_ratio, SW))
+model <- summary(lm(CO2_mean~p_a_ratio, SW))
+
+p_values <- coef(model)[, "Pr(>|t|)"]
+p_values
+
+adjusted_p_values <- p.adjust(p_values, method = "bonferroni")
+adjusted_p_values
 
 ggsave("Graphs/CO2 conc vs p_a.jpg")
 
@@ -378,7 +390,13 @@ p2 <- ggplot(SW, aes(x = p_a_ratio, y = CH4_mean)) +
   theme
 p2
 
-summary(lm(CH4_mean~p_a_ratio, SW))
+model <- summary(lm(CH4_mean~p_a_ratio, SW))
+
+p_values <- coef(model)[, "Pr(>|t|)"]
+p_values
+
+adjusted_p_values <- p.adjust(p_values, method = "bonferroni")
+adjusted_p_values
 
 ggsave("Graphs/CH4 conc vs p_a.jpg")
 
@@ -396,7 +414,13 @@ h1 <- ggplot(SW, aes(x = hand_m, y = CO2_mean)) +
 
 h1
 
-summary(lm(CO2_mean~hand_m, SW))
+model <- summary(lm(CO2_mean~hand_m, SW))
+
+p_values <- coef(model)[, "Pr(>|t|)"]
+p_values
+
+adjusted_p_values <- p.adjust(p_values, method = "bonferroni")
+adjusted_p_values
 
 ggsave("Graphs/CO2 vs HAND.jpg")
 
@@ -409,7 +433,13 @@ h2 <- ggplot(SW, aes(x = hand_m, y = CH4_mean)) +
 
 h2
 
-summary(lm(CH4_mean~hand_m, SW))
+model <- summary(lm(CH4_mean~hand_m, SW))
+
+p_values <- coef(model)[, "Pr(>|t|)"]
+p_values
+
+adjusted_p_values <- p.adjust(p_values, method = "bonferroni")
+adjusted_p_values
 
 ggsave("Graphs/CH4 vs HAND.jpg")
 
@@ -581,8 +611,89 @@ ggsave("Graphs/CVs/CV CH4 vs canopy cover.jpg")
 
 
 
+#### Bonferroni corrections ####
 
+CO2_models <- list(
+  lm1 = lm(CO2_mean ~ area_m2, data = SW),
+  lm2 = lm(CO2_mean ~ p_a_ratio, data = SW),
+  lm3 = lm(CO2_mean ~ hand_m, data = SW)
+)
+
+# Initialize a list to store p-values
+p_values_list <- list()
+
+# Loop through each model to extract p-values
+for (model_name in names(CO2_models)) {
+  # Get the summary of the model
+  summary_model <- summary(CO2_models[[model_name]])
   
-# geom_pointrange(SW, mapping = aes(x = wetland_storage_volume_m3, y = CO2_mean, 
-#                                  ymin= CO2_mean + CV_CO2*CO2_mean, ymax= CO2_mean - CV_CO2*CO2_mean), size=0, color = "blue")
-# not quite right - need to fix 
+  # Extract coefficients matrix
+  coefficients_matrix <- summary_model$coefficients
+  
+  # Check if the coefficient of interest is present
+  coefficient_name <- rownames(coefficients_matrix)[2]  # Coefficient of interest (excluding intercept)
+  
+  if (!is.na(coefficient_name) && coefficient_name != "(Intercept)") {
+    # Extract p-value for the coefficient
+    p_value <- coefficients_matrix[coefficient_name, "Pr(>|t|)"]
+  } else {
+    # If the coefficient is not present, assign NA
+    p_value <- NA
+    warning(paste("Coefficient not found in model", model_name))
+  }
+  
+  # Store the p-value in the list with the model name
+  p_values_list[[model_name]] <- p_value
+}
+
+view(p_values_list)
+
+# Correct those p-values
+# p.adjust uses the number of models to correct the alpha value
+
+adjusted_p_values <- p.adjust(p_values_list, method = "bonferroni")
+adjusted_p_values
+
+
+
+
+CH4_models <- list(
+  lm1 = lm(CH4_mean ~ area_m2, data = SW),
+  lm2 = lm(CH4_mean ~ p_a_ratio, data = SW),
+  lm3 = lm(CH4_mean ~ hand_m, data = SW)
+)
+
+# Initialize a list to store p-values
+p_values_list <- list()
+
+# Loop through each model to extract p-values
+for (model_name in names(CH4_models)) {
+  # Get the summary of the model
+  summary_model <- summary(CH4_models[[model_name]])
+  
+  # Extract coefficients matrix
+  coefficients_matrix <- summary_model$coefficients
+  
+  # Check if the coefficient of interest is present
+  coefficient_name <- rownames(coefficients_matrix)[2]  # Coefficient of interest (excluding intercept)
+  
+  if (!is.na(coefficient_name) && coefficient_name != "(Intercept)") {
+    # Extract p-value for the coefficient
+    p_value <- coefficients_matrix[coefficient_name, "Pr(>|t|)"]
+  } else {
+    # If the coefficient is not present, assign NA
+    p_value <- NA
+    warning(paste("Coefficient not found in model", model_name))
+  }
+  
+  # Store the p-value in the list with the model name
+  p_values_list[[model_name]] <- p_value
+}
+
+p_values_list
+
+# Correct those p-values
+# p.adjust uses the number of models to correct the alpha value
+
+adjusted_p_values <- p.adjust(p_values_list, method = "bonferroni")
+adjusted_p_values

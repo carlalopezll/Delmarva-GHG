@@ -1,8 +1,6 @@
 # Script for linear regressions
 
 
-
-
 #### Regressions w/ other water chem and physicochemistry ####
 
 f1 <- ggplot(merge, aes(x = NPOC, y = CO2_uM, color = Sample_Type, shape = Sample_Type)) +
@@ -216,16 +214,20 @@ fig_8 <- grid.arrange(f, d, e, ncol = 3)
 ggsave("Graphs/MS/Regressions.jpg", fig_8, width = 24, height = 12, dpi = 250, units = "in")
 
 
+install.packages("viridis")  # Install
+library("viridis")           # Load
+
 
 # Regressions with water isotopes
 
-ggplot(merge, aes(x= d2H, y = CO2_uM, color = Sample_Type, shape = Sample_Type)) +
+ggplot(SW, aes(x= CO2_uM, y = CH4_uM, color = DO_mgL)) +
   geom_point() +
   theme +
-  labs(x = "d18O", y = CO2_lab) +
+  theme(legend.position = "right") +
   stat_cor(aes(label = paste(..rr.label.., ..p.label.., sep = "~`,`~")),
            size = 5) +
-  geom_smooth(method = "lm", se = FALSE)
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_color_viridis()
 
 
 ggplot(SW, aes(x= dly_mean_wtrlvl, y = CH4_uM)) +
