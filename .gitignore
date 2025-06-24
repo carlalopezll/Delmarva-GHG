@@ -1,5 +1,3 @@
-Field notebook/
-
 .Rhistory
 
 *.csv
@@ -9,4 +7,6 @@ Field notebook/
 *.pdf
 
 Synoptic/Data/Digitized Field Notes
-Synoptic/Data/ GC sheets from James
+Synoptic/Data/GC sheets from James
+Soil core wet-up/
+Stage-area/
