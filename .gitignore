@@ -1,5 +1,4 @@
 .Rhistory
-
 *.csv
 *.xlsx
 *.dat
@@ -9,11 +8,13 @@
 *.Rproj
 *.pdf
 
-Synoptic/Data/
-Soil core wet-up/
-Stage-area/
-Sensors/Raw Data/
+Synoptic/data/
 Synoptic/graphs/
 Synoptic/output/
 
+Fluxes/graphs/
+
+Soil core wet-up/
+Stage-area/
+Sensors/Raw Data/
 .Rproj.user
