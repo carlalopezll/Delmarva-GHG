@@ -2,10 +2,10 @@
 
 Repository for projects related to Delmarva carbon cycling project
 
-```         
+        
 [Synoptic](https://github.com/carlalopezll/Delmarva-GHG/tree/main/Synoptic)
 [High-frequency CO2 sensors](https://github.com/carlalopezll/Delmarva-GHG/tree/main/Sensors)
-```
+
 
 **Contributors:**
 
