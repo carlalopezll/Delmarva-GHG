@@ -3,9 +3,15 @@
 Repository for projects related to Delmarva carbon cycling project
 
         
-[Synoptic](https://github.com/carlalopezll/Delmarva-GHG/tree/main/Synoptic)
-[High-frequency CO2 sensors](https://github.com/carlalopezll/Delmarva-GHG/tree/main/Sensors)
+1. [Synoptic](https://github.com/carlalopezll/Delmarva-GHG/tree/main/Synoptic)
 
+2. [High-frequency sensors](https://github.com/carlalopezll/Delmarva-GHG/tree/main/Sensors)
+
+3. [Metabolism](https://github.com/carlalopezll/Delmarva-GHG/tree/main/Metabolism)
+
+4. [Fluxes](https://github.com/carlalopezll/Delmarva-GHG/tree/main/Fluxes)
+
+5. [Stratification]
 
 **Contributors:**
 
