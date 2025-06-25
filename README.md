@@ -11,7 +11,7 @@ Repository for projects related to Delmarva carbon cycling project
 
 4. [Fluxes](https://github.com/carlalopezll/Delmarva-GHG/tree/main/Fluxes)
 
-5. [Stratification]
+5. [Stratification](https://github.com/carlalopezll/Delmarva-GHG/tree/main/Stratification)
 
 **Contributors:**
 
