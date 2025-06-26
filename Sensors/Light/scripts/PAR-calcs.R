@@ -31,14 +31,12 @@ process_file <- function(filepath) {
   return(df)
 }
 
-# List all CSV files
+# List all raw csv files
 file_list <- list.files(pattern = "*.csv", full.names = TRUE)
 
 # Apply function to all files and merge
 light <- lapply(file_list, process_file) %>%
   bind_rows()
-
-light$datetime_corrected <- as.POSIXct(light$datetime, format = "%m/%d/%y %I:%M:%S %p")
 
 # Converting lux to PAR
 # PPFD (µmol m⁻² s⁻¹) ≈ Lux * 0.018
