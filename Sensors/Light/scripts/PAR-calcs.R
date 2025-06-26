@@ -49,5 +49,3 @@ setwd("C:/Users/Carla López Lloreda/Dropbox/Grad school/Research/Delmarva proje
 
 # Write to csv
 write_csv(light, "light_data.csv")
-
-
