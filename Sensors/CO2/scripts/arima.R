@@ -1,24 +1,44 @@
+# Script that uses ARIMA models to look at the influence of precipitation on CO2 in Delmarva wetlands
+# Carla López Lloreda
+
+# load libraries
 library(tseries)
 library(forecast) # for auto.arima()
 library(fable) # for ARIMA()
 library(tsibble)
+library(readr)
+library(broom)
 
-sensors_15min <- sensors %>%
-  mutate(date = as.Date(Timestamp))
+# read in high-frequency data
+sensors_hf <- read_csv("CO2/data/processed data/merged sensors_250412.csv")
+
+# extracting a date column
+sensors_hf <- sensors_hf %>%
+  mutate(date = as.Date(Timestamp_corrected))
 
 #### Daily means ####
+# Suggestion by Cayelan was to use daily means, amplitude range, instead of the high-frequency data
 
 # Looking at a subset of data without gaps
-sensors_subset <- sensors %>%
+sensors_subset <- sensors_hf %>%
   filter(date > "2021-09-28" & date < "2021-11-14")
 
-# Working only with the daily mean data
-sensors_daily <- sensors_subset %>%
-  mutate(date = as.Date(Timestamp)) %>%  # Extract date from timestamp
-  group_by(Site_ID, date) %>%               # Group by Site and Date
-  summarise(CO2_uatm_mean = mean(CO2_cal_uatm, na.rm = TRUE)) %>%
+# Calculating daily metrics
+# should probably just have a separate script that calculates these metrics so I'm not replicating this
+
+# CV = (Standard Deviation / Mean) * 100
+sensors_daily <- sensors_hf %>%
+  group_by(Site_ID, date) %>%
+  summarise(CO2_uatm_mean = mean(CO2_cal_uatm, na.rm = TRUE),
+         CO2_uatm_sd = sd(CO2_cal_uatm, na.rm = TRUE),
+         CO2_uatm_amplitude = max(CO2_cal_uatm, na.rm = TRUE) - min(CO2_cal_uatm, na.rm = TRUE),
+         CO2_CV = 100*(sd(CO2_cal_uatm, na.rm = TRUE) / mean(CO2_cal_uatm, na.rm = TRUE)),
+         wl_mean = mean(waterLevel, na.rm = TRUE),
+         wl_CV = 100*(sd(waterLevel, na.rm = TRUE) / mean(waterLevel, na.rm = TRUE)),
+         precip_mean = mean(precip, na.rm = TRUE)) %>%    # not sure what this metric should be
   ungroup()
 
+# filtering by site and converting to tstible for arima
 ND_daily <- sensors_daily %>%
   filter(Site_ID == "ND") %>%
   as_tsibble(index = date)
@@ -30,17 +50,6 @@ DK_daily <- sensors_daily %>%
 TS_daily <- sensors_daily %>%
   filter(Site_ID == "TS" & !is.na(date)) %>%
   as_tsibble(index = date)
-
-a <- ggplot(ND_daily, aes(x = date, y = CO2_uatm_mean)) +
-  geom_point()
-
-b <- ggplot(DK_daily, aes(x = date, y = CO2_uatm_mean)) +
-  geom_point()
-
-c <- ggplot(TS_daily, aes(x = date, y = CO2_uatm_mean)) +
-  geom_point()
-
-cowplot::plot_grid(a,b,c, nrow=3)
 
 # ARIMA models for ND_daily
 
