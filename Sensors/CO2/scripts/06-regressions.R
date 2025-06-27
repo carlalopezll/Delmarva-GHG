@@ -3,9 +3,14 @@
 
 # load libraries
 library(ggplot2)
+library(readr)
+library(purrr)
 
 # read in high-frequency data
-sensors <- read_csv("CO2/data/processed data/merged sensors_250412.csv")
+sensors_hf <- read_csv("CO2/data/processed data/merged sensors_250412.csv")
+
+# read in daily data
+sensors_daily <- read_csv("CO2/data/processed data/sensors_daily.csv")
 
 # set theme
 theme <- theme_bw() +
@@ -20,16 +25,6 @@ CO2_lab <- expression(paste("C","O"[2]^{}*" (uatm)"))
 
 lims <- lims <- as.POSIXct(strptime(c("2021-04-14 12:30:00", "2024-10-04 00:00"),
                                     format = "%Y-%m-%d %H:%M"))
-
-# Add a column to indicate if water level is increasing or decreasing
-sensors2 <- sensors %>%
-  mutate(
-    waterLevel_trend = case_when(
-      change_5_days > 0 ~ "Increasing",    # If change is positive
-      change_5_days < 0 ~ "Decreasing",    # If change is negative
-      TRUE ~ NA_character_                # Handle missing values or other cases
-    )
-  )
 
 #### Plotting ####
 
@@ -70,6 +65,7 @@ CO2_WL_lm <- sensors_daily %>%
   })
 
 
+# regressions of CO2 CV and water level CV
 ggplot(sensors_daily , aes(x = wl_CV, y= CO2_CV, color = Site_ID)) +
   geom_point() +
   geom_smooth(method = "lm") +
@@ -96,12 +92,30 @@ CV_CO2_WL_lm <- sensors_daily %>%
   })
 
 
-ggplot(sensors_daily, aes(x = waterLevel, y = CO2_cal_uatm, color = Site_ID)) +
+# looking at the full dataset (not daily means)
+ggplot(sensors_hf, aes(x=waterLevel, y = CO2_cal_uatm, color = Site_ID)) +
   geom_point() +
-  geom_smooth()
+  geom_smooth(method = "lm")
 
-ggsave("CO2/graphs/CO2 time-series by site_subset.jpg")
+ggsave("CO2/graphs/CO2 vs wl_hf.jpg")
 
+hf_CO2_WL_lm <- sensors_hf %>%
+  group_by(Site_ID) %>%
+  group_split() %>%
+  map_df(function(dat) {
+    model <- lm(CO2_cal_uatm ~ waterLevel, data = dat)
+    model_summary <- summary(model)
+    slope <- coef(model)["wl_CV"]
+    p_value <- coef(model_summary)[, "Pr(>|t|)"]["wl_CV"]
+    
+    tibble(
+      site = unique(dat$Site_ID),
+      r.squared = model_summary$r.squared,
+      adj.r.squared = model_summary$adj.r.squared,
+      slope = slope,
+      p.value = p_value
+    )
+  })
 
 # Daily mean CO2 vs daily mean water level
 
