@@ -12,9 +12,11 @@ Synoptic/data/
 Synoptic/graphs/
 Synoptic/output/
 
+Sensors/CO2/graphs
+Sensors/Raw Data/
+
 Fluxes/data/
 
 Soil core wet-up/
+
 Stage-area/
-Sensors/Raw Data/
-.Rproj.user
