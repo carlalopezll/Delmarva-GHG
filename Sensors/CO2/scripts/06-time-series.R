@@ -2,23 +2,19 @@
 # Created by Carla L?pez Lloreda for Delmarva project
 # Last updated 4/8/2023
 
-# Load libraries
-
+# load libraries
 library(udunits2) # unit conversions
 library(scales)
 library(methods)
 library(gridExtra)
 library(plotly)
 
-# Set up
-
-source("CO2/scripts/0-setup.R")
+# read in high-frequency data
+sensors <- read_csv("CO2/data/processed data/merged sensors_250412.csv")
 
 color_palette <- c("DK" = "#F8766D", 
                    "ND" = "#00BA38", 
                    "TS" = "#619CFF")
-
-sensors <- read_csv("CO2/data/merged sensors_250412.csv")
 
 # Reordering seasons
 sensors$season <- factor(sensors$season, levels = c("Spring", "Summer", "Fall", "Winter"))
@@ -32,7 +28,6 @@ sensors <- filter(sensors, timestamp < "2022-08-04")
 
 
 # Rename sites
-
 sensors <- sensors %>%
   mutate(Site_hydroperiod = recode(Site_ID, 
                                    TS = "Short", 
@@ -41,7 +36,7 @@ sensors <- sensors %>%
 
 # Select only the relevant columns to plot
 data_relevant <- sensors %>%
-  select(timestamp, Site_ID, CO2_cal_uatm, waterLevel, precip_mm, DO_perc)
+  select(timestamp, Site_ID, CO2_cal_uatm, waterLevel, precip_mm)
 
 # Reshape the data to a long format
 data_long <- data_relevant %>%
@@ -55,15 +50,7 @@ ggplot(data_long, aes(x = timestamp, y = value, color = Site_ID)) +
   theme_minimal() +
   theme(legend.title = element_blank())
 
-
-
-# Adding a year column
-# co2 <- co2 %>%
-#   mutate(Year = year(Timestamp)) %>%
-#   group_by(Year) %>%
-#   mutate(Start_of_Year = as.POSIXct(paste(Year, "01", "01", sep = "-")),
-#          End_of_Year = as.POSIXct(paste(Year, "12", "31", sep = "-"))) %>%
-#   ungroup()
+ggsave("CO2/graphs/stacked time-series.jpg")
 
 # Plot CO2 time-series for all sites w/ no facet wrap
 ggplot(sensors, aes(x= Timestamp, y = CO2_cal_uatm, color = Site_ID)) +
