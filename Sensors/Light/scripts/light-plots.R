@@ -17,6 +17,8 @@ ggplot(light, aes(x=datetime_corrected, y = PAR)) +
   facet_wrap(~site, ncol= 1) +
   labs(x = "Datetime", y = "PAR (umol/m2/s)")
 
+ggsave("Light/graphs/PAR timeseries.jpg")
+
 # boxplot
 ggplot(light, aes(x= site, y = PAR)) +
   geom_boxplot()
@@ -25,3 +27,5 @@ ggplot(light, aes(x= site, y = PAR)) +
 summary <- light %>%
   group_by(site) %>%
   summarize(PAR_mean = mean(PAR, na.rm = TRUE))
+
+write.csv(summary, "Light/data/light_summary.csv", row.names = FALSE)
