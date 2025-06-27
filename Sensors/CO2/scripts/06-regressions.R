@@ -1,6 +1,13 @@
-# Plotting merged sensor data
+# Regressions between CO2 sensor data and hydro metrics
+# Carla López Lloreda
 
-# Theme
+# load libraries
+library(ggplot2)
+
+# read in high-frequency data
+sensors <- read_csv("CO2/data/processed data/merged sensors_250412.csv")
+
+# set theme
 theme <- theme_bw() +
   theme(
     axis.text = element_text(size = 20),
@@ -15,7 +22,7 @@ lims <- lims <- as.POSIXct(strptime(c("2021-04-14 12:30:00", "2024-10-04 00:00")
                                     format = "%Y-%m-%d %H:%M"))
 
 # Add a column to indicate if water level is increasing or decreasing
-sensors2 <- sensors2 %>%
+sensors2 <- sensors %>%
   mutate(
     waterLevel_trend = case_when(
       change_5_days > 0 ~ "Increasing",    # If change is positive
@@ -28,6 +35,73 @@ sensors2 <- sensors2 %>%
 
 # scale_color_manual(values = c("Spring" = "#009E73", "Summer" = "#F0E442",
 #                                 "Fall" = "#D55E00", "Winter" = "#56B4E9"))
+
+
+# Thinking about how our high-frequency results interrogate our synoptic data
+
+ggplot(sensors_daily , aes(x = wl_mean, y= CO2_uatm_mean, color = Site_ID)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+ggsave("CO2/graphs/daily CO2 mean vs daily wl mean.jpg")
+
+models_by_site <- sensors_daily %>%
+  group_by(Site_ID) %>%
+  group_modify(~ tidy(lm(CO2_uatm_mean ~ wl_mean, data = .x)))
+
+# not sure why this isn't working
+# run but doesn't give me slope and p-values
+CO2_WL_lm <- sensors_daily %>%
+  group_by(Site_ID) %>%
+  group_split() %>%
+  map_df(function(dat) {
+    model <- lm(CO2_uatm_mean ~ wl_mean, data = dat)
+    model_summary <- summary(model)
+    slope <- coef(model)["wl_CV"]
+    p_value <- coef(model_summary)[, "Pr(>|t|)"]["wl_CV"]
+    
+    tibble(
+      site = unique(dat$Site_ID),
+      r.squared = model_summary$r.squared,
+      adj.r.squared = model_summary$adj.r.squared,
+      slope = slope,
+      p.value = p_value
+    )
+  })
+
+
+ggplot(sensors_daily , aes(x = wl_CV, y= CO2_CV, color = Site_ID)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  scale_x_log10()
+
+ggsave("CO2/graphs/CO2 CV vs WL CV.jpg")
+
+CV_CO2_WL_lm <- sensors_daily %>%
+  group_by(Site_ID) %>%
+  group_split() %>%
+  map_df(function(dat) {
+    model <- lm(CO2_CV ~ wl_CV, data = dat)
+    model_summary <- summary(model)
+    slope <- coef(model)["wl_CV"]
+    p_value <- coef(model_summary)[, "Pr(>|t|)"]["wl_CV"]
+    
+    tibble(
+      site = unique(dat$Site_ID),
+      r.squared = model_summary$r.squared,
+      adj.r.squared = model_summary$adj.r.squared,
+      slope = slope,
+      p.value = p_value
+    )
+  })
+
+
+ggplot(sensors_daily, aes(x = waterLevel, y = CO2_cal_uatm, color = Site_ID)) +
+  geom_point() +
+  geom_smooth()
+
+ggsave("CO2/graphs/CO2 time-series by site_subset.jpg")
+
 
 # Daily mean CO2 vs daily mean water level
 
