@@ -1,6 +1,8 @@
 # Script that uses ARIMA models to look at the influence of precipitation on CO2 in Delmarva wetlands
 # Carla López Lloreda
 
+# This would be better as a Markdown
+
 # load libraries
 library(tseries)
 library(forecast) # for auto.arima()
@@ -12,42 +14,26 @@ library(broom)
 # read in high-frequency data
 sensors_hf <- read_csv("CO2/data/processed data/merged sensors_250412.csv")
 
-# extracting a date column
-sensors_hf <- sensors_hf %>%
-  mutate(date = as.Date(Timestamp_corrected))
+# read in daily data
+sensors_daily <- read_csv("CO2/data/processed data/sensors_daily.csv")
 
 #### Daily means ####
 # Suggestion by Cayelan was to use daily means, amplitude range, instead of the high-frequency data
 
 # Looking at a subset of data without gaps
-sensors_subset <- sensors_hf %>%
+sensors_daily_subset <- sensors_daily %>%
   filter(date > "2021-09-28" & date < "2021-11-14")
 
-# Calculating daily metrics
-# should probably just have a separate script that calculates these metrics so I'm not replicating this
-
-# CV = (Standard Deviation / Mean) * 100
-sensors_daily <- sensors_hf %>%
-  group_by(Site_ID, date) %>%
-  summarise(CO2_uatm_mean = mean(CO2_cal_uatm, na.rm = TRUE),
-         CO2_uatm_sd = sd(CO2_cal_uatm, na.rm = TRUE),
-         CO2_uatm_amplitude = max(CO2_cal_uatm, na.rm = TRUE) - min(CO2_cal_uatm, na.rm = TRUE),
-         CO2_CV = 100*(sd(CO2_cal_uatm, na.rm = TRUE) / mean(CO2_cal_uatm, na.rm = TRUE)),
-         wl_mean = mean(waterLevel, na.rm = TRUE),
-         wl_CV = 100*(sd(waterLevel, na.rm = TRUE) / mean(waterLevel, na.rm = TRUE)),
-         precip_mean = mean(precip, na.rm = TRUE)) %>%    # not sure what this metric should be
-  ungroup()
-
 # filtering by site and converting to tstible for arima
-ND_daily <- sensors_daily %>%
+ND_daily <- sensors_daily_subset %>%
   filter(Site_ID == "ND") %>%
   as_tsibble(index = date)
 
-DK_daily <- sensors_daily %>%
+DK_daily <- sensors_daily_subset %>%
   filter(Site_ID == "DK" & !is.na(date)) %>%
   as_tsibble(index = date)
 
-TS_daily <- sensors_daily %>%
+TS_daily <- sensors_daily_subset %>%
   filter(Site_ID == "TS" & !is.na(date)) %>%
   as_tsibble(index = date)
 
@@ -101,9 +87,11 @@ summary(arima_test2)
 
 arimax_test <- Arima(
   ND_daily$CO2_uatm_mean,
-  order = c(0, 1, 1),
-  xreg = ND_daily$precip_mm
+  order = c(0, 1, 0),
+  xreg = ND_daily$wl_mean
 )
 
+checkresiduals(arimax_test)
+summary(arimax_test)
 # Forecasting lol
 forecast(arima_test2, h = 10) %>% autoplot()
