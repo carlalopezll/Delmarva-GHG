@@ -12,8 +12,9 @@ Synoptic/data/
 Synoptic/graphs/
 Synoptic/output/
 
-Sensors/CO2/graphs
+Sensors/CO2/graphs/
 Sensors/Raw Data/
+Sensors/Light/graphs
 
 Fluxes/data/
 
