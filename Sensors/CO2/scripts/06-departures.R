@@ -4,7 +4,7 @@ library(dplyr)
 
 # Read in merged script
 
-sensors <- read_csv("CO2/data/merged sensors_250412.csv")
+sensors <- read_csv("CO2/data/processed data/merged sensors_250412.csv")
 
 # Reordering seasons
 sensors$season <- factor(sensors$season, levels = c("Spring", "Summer", "Fall", "Winter"))
@@ -13,8 +13,7 @@ sensors$season <- factor(sensors$season, levels = c("Spring", "Summer", "Fall", 
 sensors$Site_ID <- factor(sensors$Site_ID, levels = c("TS", "DK", "ND"))
 
 # Filter so that we use only the time with precip and CO2 data
-
-sensors <- filter(sensors, timestamp < "2022-08-04")
+# sensors <- filter(sensors, timestamp < "2022-08-04")
 
 # Rename sites
 
@@ -45,7 +44,7 @@ sensors2 <- sensors %>%
     saturation_level = co2_molarity / SATURATION_CONCENTRATION_MOLAR
   )
 
-sensors2$DO_Concentration_uM <- sensors2$DO_Concentration_mgL * 1000 / 31.999
+sensors2$DO_Concentration_uM <- sensors2$DO_conc_mgL * 1000 / 31.999
 sensors2$DO_sat <- sensors2$DO_perc * 1000 / 31.999
 
 # Need to convert CO2 from ppm to uM
@@ -66,8 +65,7 @@ sensors2$CO2_sat <- (ckHCO2 * exp(cdHdTCO2*(1/(sensors2$Logger_TempC + 273.15) -
 mean(sensors2$Site_AbsPressure.kPa, na.rm = T)*10
 # 1109.355
 
-sensors2$CO2_sat <- (ckHCO2 * exp(cdHdTCO2*(1/(15 + 273.15) - 1/cT0))) * 
-  420 * 1109.35
+sensors2$CO2_sat <- (ckHCO2 * exp(cdHdTCO2*(1/(15 + 273.15) - 1/cT0))) * 420 * 1109.35
 
 # #calculate departures:
 # allData$O2.departure<-allData$dissolvedOxygen - allData$DO.sat
@@ -146,6 +144,9 @@ lm_annotations <- sensors3 %>%
            x = 300,  # Adjust these based on your data range
            y = 100)
   })
+
+
+
 
 
 # DO-CO2 for each individual site
@@ -292,6 +293,63 @@ ggplot(sensors3, aes(x= saturation_level, y = DO_perc, color = waterLevel)) +
 
 ggsave("CO2/graphs/CO2 vs DO saturation.jpg", width = 17, height = 6, units = "in")
 
+sensors3$DO_CO2 <- sensors3$DO_Concentration_uM/sensors3$CO2_Conc_uM
+
+sensors3$euclidean_distance <- sqrt(sensors3$DO_perc^2 + sensors3$saturation_level^2)
+
+str(sensors3$euclidean_distance)
 
 
 
+# calculating departure metrics
+
+sensors3 <- sensors3 %>%
+  mutate(offset = abs(sensors3$saturation_level + sensors3$DO_perc) / sqrt(2))
+
+ggplot(sensors3, aes(x=Timestamp_corrected, y = offset, color = Site_ID)) +
+  geom_point() +
+  geom_smooth()
+
+ggplot(sensors3, aes(x=waterLevel, y = offset, color = Site_ID)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+ggplot(sensors3, aes(x=precip_mm, y = offset, color = Site_ID)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  xlim(1, 40)
+
+ggplot(sensors3, aes(x=Site_ID, y= offset, color = season)) +
+  geom_boxplot()
+
+ggplot(sensors3, aes(x=i.Logger_TempC, y = offset, color = season)) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  facet_wrap(~Site_ID)
+
+ggplot(sensors3, aes(x=Site_ID, y = offset, color = season)) +
+  geom_boxplot()
+
+ggplot(sensors3, aes(x= saturation_level, y = DO_perc, color = departure_1m1)) +
+  geom_point(size = 0.6, alpha = 0.5) +
+  facet_wrap(~Site_hydroperiod, ncol = 3) +
+  theme +
+  labs(x = CO2_sat_lab, y = "DO saturation (%)", color = "Water level (m)") +
+  geom_abline(slope = -1, intercept = 200, linetype = "dashed") +
+  geom_vline(xintercept = 100) +
+  geom_hline(yintercept = 100) +
+  theme(legend.position = "bottom", 
+        strip.text = element_text(size = 20)) +
+  scale_color_viridis_c(option = "C")
+
+
+ggplot(sensors3, aes(x= saturation_level, y = DO_perc, color = departure_1m1)) +
+  geom_point(size = 0.6, alpha = 0.5) +
+  facet_wrap(~Site_hydroperiod, ncol = 3) +
+  theme +
+  labs(x = CO2_sat_lab, y = "DO saturation (%)", color = "Water level (m)") +
+  geom_abline(slope = -1, intercept = 200, linetype = "dashed") +
+  geom_vline(xintercept = 100) +
+  geom_hline(yintercept = 100) +
+  theme(legend.position = "bottom", 
+        strip.text = element_text(size = 20))
