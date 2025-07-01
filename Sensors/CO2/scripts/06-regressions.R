@@ -117,6 +117,32 @@ hf_CO2_WL_lm <- sensors_hf %>%
     )
   })
 
+ggplot(sensors_hf, aes(x=precip_mm, y = waterLevel, color = Site_ID)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+
+ggplot(sensors_hf, aes(x=Logger_TempC, y = CO2_cal_uatm, color = Site_ID)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+ggplot(sensors_daily, aes(x=temp_mean, y = CO2_uatm_mean, color = Site_ID)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+
+
+ggsave("CO2/graphs/CO2 vs wl_hf.jpg")
+
+
+
+
+
+
+
+
+
+
+
 # Daily mean CO2 vs daily mean water level
 
 ggplot(sensors, aes(x= daily_mean_wl, y = daily_mean_CO2_cal_uatm, color= season)) +
